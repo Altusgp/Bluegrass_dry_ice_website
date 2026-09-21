@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Addresses | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Account</div>
+    <h1>My Account</h1>
+    <div class="account-grid">
+      <div>{% include '_account_nav.html' with context %}</div>
+      <div class="account-card account-content">
+        <h2 style="margin-top:0">Addresses</h2>
+        {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+        {% if addresses %}
+        {% for a in addresses %}
+        <div class="address-row">
+          <div class="addr-text">
+            <span class="addr-label">{{ a['label'] }}</span><br>
+            {{ a['line1'] }}{% if a['line2'] %}, {{ a['line2'] }}{% endif %}<br>
+            {{ a['city'] }}, {{ a['state'] }} {{ a['zip'] }}
+          </div>
+          <form method="post" action="{{ url_for('delete_address', address_id=a['id']) }}" onsubmit="return confirm('Remove this address?')">
+            <button class="btn ghost small" type="submit">Remove</button>
+          </form>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">You haven't saved any addresses yet.</p>
+        {% endif %}
+
+        <h3 style="margin-top:26px">Add an address</h3>
+        <form class="form-stack" method="post" action="{{ url_for('addresses') }}">
+          <label>Label<input name="label" placeholder="Home, Work, etc." required></label>
+          <label>Address line 1<input name="line1" required></label>
+          <label>Address line 2 (optional)<input name="line2"></label>
+          <label>City<input name="city" required></label>
+          <label>State<input name="state" required></label>
+          <label>ZIP<input name="zip" required></label>
+          <button class="btn primary block" type="submit">Save address</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

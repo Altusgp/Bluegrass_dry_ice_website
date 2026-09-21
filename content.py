@@ -6,7 +6,7 @@ BUSINESS = {
     "tagline": "Nicholasville · Lexington",
     "phone": "(859) 514-3114",
     "phone_href": "tel:+18595143114",
-    "email": "orders@bluegrassdryice.com",
+    "email": "orders@dryiceky.com",
     "street": "3004 Park Central Ave, Suite B",
     "city": "Nicholasville, KY 40356",
     "hours": ["Mon–Fri: 9:00 AM–5:00 PM", "Saturday: 10:00 AM–2:00 PM", "Sunday: closed"],

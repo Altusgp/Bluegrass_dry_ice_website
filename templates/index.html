@@ -9,23 +9,7 @@
 </head>
 <body>
 
-<header class="header">
-  <div class="wrap nav">
-    <a class="brand" href="#home">
-      <div class="flake">❄</div>
-      <span><b>{{ biz.name }}</b><small>{{ biz.tagline }}</small></span>
-    </a>
-    <nav class="navlinks">
-      <a href="#pricing">Pricing</a>
-      <a href="#estimator">How Much?</a>
-      <a href="#order">Order</a>
-      <a href="#pickup">Pickup</a>
-      <a href="#guides">Guides</a>
-      <a href="#contact">Contact</a>
-    </nav>
-    <a class="btn primary small" href="#order">Order Now</a>
-  </div>
-</header>
+{% include '_header.html' %}
 
 <main>
 
@@ -149,49 +133,117 @@
 
     <div class="order-shell">
       <div class="panel">
-        <div class="step-title"><span class="num">1</span>Choose bag size(s)</div>
-        {% for bag in bags %}
-        <div class="bag-row">
-          <div><b>{{ bag.name }} · ${{ bag.price }}</b><span>{{ bag.per_lb }}</span></div>
-          <div class="counter">
-            <button type="button" aria-label="Remove one {{ bag.name }}" data-qty="{{ loop.index0 }}" data-step="-1">−</button>
-            <span id="qty{{ loop.index0 }}">0</span>
-            <button type="button" aria-label="Add one {{ bag.name }}" data-qty="{{ loop.index0 }}" data-step="1">+</button>
+        <div class="checkout-steps" id="checkoutSteps">
+          <div class="cstep active" data-cstep="1"><span>1</span>Cart</div>
+          <div class="cstep" data-cstep="2"><span>2</span>Pickup Details</div>
+          <div class="cstep" data-cstep="3"><span>3</span>Review</div>
+          <div class="cstep" data-cstep="4"><span>4</span>Payment</div>
+        </div>
+
+        <div class="checkout-step" data-step="1">
+          <div class="step-title"><span class="num">1</span>Choose bag size(s)</div>
+          {% for bag in bags %}
+          <div class="bag-row">
+            <div><b>{{ bag.name }} · ${{ bag.price }}</b><span>{{ bag.per_lb }}</span></div>
+            <div class="counter">
+              <button type="button" aria-label="Remove one {{ bag.name }}" data-qty="{{ loop.index0 }}" data-step="-1">−</button>
+              <span id="qty{{ loop.index0 }}">0</span>
+              <button type="button" aria-label="Add one {{ bag.name }}" data-qty="{{ loop.index0 }}" data-step="1">+</button>
+            </div>
+          </div>
+          {% endfor %}
+
+          <div class="step-title" style="margin-top:24px"><span class="num">2</span>Add a container</div>
+          <div class="opt-grid" id="containers">
+            {% for c in containers %}
+            <label class="opt">
+              <input type="radio" name="container" value="{{ c.price }}" {% if loop.first %}checked{% endif %}>
+              {{ c.label }} <b>${{ c.price }}</b>
+            </label>
+            {% endfor %}
+          </div>
+
+          <div class="checkout-nav" style="justify-content:flex-end">
+            <button class="btn primary" type="button" data-next>Continue to pickup details →</button>
           </div>
         </div>
-        {% endfor %}
 
-        <div class="step-title" style="margin-top:24px"><span class="num">2</span>Add a container</div>
-        <div class="opt-grid" id="containers">
-          {% for c in containers %}
-          <label class="opt">
-            <input type="radio" name="container" value="{{ c.price }}" {% if loop.first %}checked{% endif %}>
-            {{ c.label }} <b>${{ c.price }}</b>
-          </label>
-          {% endfor %}
+        <div class="checkout-step" data-step="2" hidden>
+          <div class="step-title"><span class="num">2</span>Pickup details</div>
+          <div class="pickup-callout">
+            <b>Pickup address</b>
+            <span>{{ biz.street }}, {{ biz.city }}</span>
+            <small>This is local pickup only. No shipping address is needed.</small>
+          </div>
+          <div class="form-stack">
+            <label>Name<input id="ckName" value="{{ current_user['name'] if current_user else '' }}" required></label>
+            <label>Email<input type="email" id="ckEmail" value="{{ current_user['email'] if current_user else '' }}" required></label>
+            <label>Phone<input type="tel" id="ckPhone" value="{{ current_user['phone'] if current_user else '' }}" required></label>
+            <label>Preferred pickup date<input type="date" id="ckDate"></label>
+            <label>Notes (optional)<input id="ckNotes" placeholder="Anything we should know?"></label>
+          </div>
+          <div class="checkout-nav">
+            <button class="btn ghost" type="button" data-back>← Back</button>
+            <button class="btn primary" type="button" data-next>Continue to review →</button>
+          </div>
+        </div>
+
+        <div class="checkout-step" data-step="3" hidden>
+          <div class="step-title"><span class="num">3</span>Review your order</div>
+          <div id="reviewSummary"></div>
+          <div class="checks">
+            <label><input type="checkbox" id="age"> I am 18 or older and will bring a valid ID at pickup.</label>
+            <label><input type="checkbox" id="airtight"> I understand dry ice must never be stored in an airtight container.</label>
+            <label><input type="checkbox" id="safetyCheck"> I have read and agree to the safety guidance.</label>
+          </div>
+          <div class="checkout-nav">
+            <button class="btn ghost" type="button" data-back>← Back</button>
+            <button class="btn primary" type="button" data-next>Continue to payment →</button>
+          </div>
+        </div>
+
+        <div class="checkout-step" data-step="4" hidden>
+          <div class="step-title"><span class="num">4</span>Payment</div>
+          <div class="opt-grid" style="margin-bottom:14px">
+            <label class="opt"><input type="radio" name="pay" value="online" checked> Pay online</label>
+            <label class="opt"><input type="radio" name="pay" value="pickup"> Pay at pickup</label>
+          </div>
+          <div class="payment-placeholder">
+            <b>Card payment</b>
+            <p>Secure card entry will open in Stripe Checkout when online payments are connected. Card numbers are never stored by this website.</p>
+          </div>
+          <div class="billing-fields">
+            <div class="step-title"><span class="num">B</span>Billing address</div>
+            <div class="form-stack">
+              <label>Address line 1<input id="billingLine1" autocomplete="billing address-line1"></label>
+              <label>Address line 2 (optional)<input id="billingLine2" autocomplete="billing address-line2"></label>
+              <div class="form-row">
+                <label>City<input id="billingCity" autocomplete="billing address-level2"></label>
+                <label>State<input id="billingState" maxlength="2" autocomplete="billing address-level1"></label>
+                <label>ZIP code<input id="billingZip" inputmode="numeric" autocomplete="billing postal-code"></label>
+              </div>
+              <label class="check-inline"><input type="checkbox" id="saveBilling"> Save this billing address to my account</label>
+            </div>
+          </div>
+          <button class="btn primary block" id="checkoutBtn">Place order →</button>
+          <div class="checkout-nav" style="justify-content:flex-start;margin-top:12px">
+            <button class="btn ghost" type="button" data-back>← Back</button>
+          </div>
+          <div class="notice" id="orderNotice">
+            {% if current_user %}
+            Signed in as {{ current_user['email'] }}. Orders are saved to your account.
+            {% else %}
+            Sign in before placing an order. Stripe payments will be connected later.
+            {% endif %}
+          </div>
         </div>
       </div>
 
       <aside class="summary">
-        <div class="step-title"><span class="num">3</span>Review order</div>
+        <div class="step-title">Your order</div>
         <div id="summaryItems"><p class="muted small" style="margin:0 0 8px">Choose a bag size to begin.</p></div>
         <div class="sum-line"><span>Container</span><strong id="containerTotal">$0</strong></div>
         <div class="sum-line total"><span>Total</span><span id="grandTotal">$0.00</span></div>
-
-        <div class="checks">
-          <label><input type="checkbox" id="age"> I am 18 or older and will bring a valid ID at pickup.</label>
-          <label><input type="checkbox" id="airtight"> I understand dry ice must never be stored in an airtight container.</label>
-          <label><input type="checkbox" id="safetyCheck"> I have read and agree to the safety guidance.</label>
-        </div>
-
-        <div class="opt-grid" style="margin-bottom:14px">
-          <label class="opt"><input type="radio" name="pay" value="online" checked> Pay online</label>
-          <label class="opt"><input type="radio" name="pay" value="pickup"> Pay at pickup</label>
-        </div>
-
-        <button class="btn primary block" id="checkoutBtn">Continue to Checkout →</button>
-        <div class="notice" id="orderNotice">Orders are validated by the Flask backend. Connect Stripe or Square
-          for live payments and your SMS/email provider for automated confirmations.</div>
       </aside>
     </div>
   </div>
@@ -258,8 +310,8 @@
     <div class="use-grid">
       {% for u in use_cases %}
       <article class="use-card">
-        <div class="use-media"
-             style="background-image:url('{{ url_for('static', filename='images/' ~ u.image) }}'),linear-gradient(150deg,{{ u.fallback }})"></div>
+           <div class="use-media"
+             style="background-image:linear-gradient(150deg,{{ u.fallback }}){% if u.image_exists %},url('{{ url_for('static', filename='images/' ~ u.image) }}'){% endif %}"></div>
         <div class="use-body">
           <h3>{{ u.title }}</h3>
           <p>{{ u.text }}</p>

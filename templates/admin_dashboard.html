@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Admin</div>
+    <h1>Admin panel</h1>
+    <div class="account-grid">
+      <div>{% include '_admin_nav.html' %}</div>
+      <div class="account-card account-content">
+        <p class="muted">Manage registered users, orders, and saved addresses.</p>
+        <div class="admin-stats">
+          <div class="admin-stat"><div class="num">{{ counts.users }}</div><div class="label">Users</div></div>
+          <div class="admin-stat"><div class="num">{{ counts.orders }}</div><div class="label">Orders</div></div>
+          <div class="admin-stat"><div class="num">{{ counts.addresses }}</div><div class="label">Addresses</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

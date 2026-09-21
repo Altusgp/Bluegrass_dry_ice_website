@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order History | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Account</div>
+    <h1>My Account</h1>
+    <div class="account-grid">
+      <div>{% include '_account_nav.html' with context %}</div>
+      <div class="account-card account-content">
+        <h2 style="margin-top:0">Order history</h2>
+        {% if orders %}
+        <div class="order-list">
+          {% for order in orders %}
+          <div class="order-row">
+            <div><strong>{{ order['id'] }}</strong><div class="small muted">{{ order['placed_at'] }} · {{ order['total_lbs'] }} lb{% if order['pickup_date'] %} · Pickup: {{ order['pickup_date'] }}{% endif %}</div></div>
+            <div style="text-align:right"><strong>${{ '%.2f'|format(order['total']) }}</strong><div class="small muted">{{ order['payment_status'] }}</div></div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted">You have not placed an order yet.</p>
+        <p><a class="btn primary" href="{{ url_for('home') }}#order">Place an order</a></p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

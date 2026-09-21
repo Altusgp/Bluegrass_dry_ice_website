@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify your email | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+<main class="auth-shell">
+  <div class="auth-card">
+    <div class="eyebrow">Bluegrass Dry Ice</div>
+    <h1>Check your email.</h1>
+    <p class="muted">We sent a 6-digit code to <b>{{ email }}</b>. Enter it below to finish creating your account.</p>
+    {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+    {% if notice %}<p class="small" style="color:#1b8a4c;font-weight:700">{{ notice }}</p>{% endif %}
+    <form class="form-stack" method="post" action="{{ url_for('verify_otp') }}">
+      <label>Verification code<input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required autofocus></label>
+      <button class="btn primary block" type="submit">Verify &amp; create account</button>
+    </form>
+    <form method="post" action="{{ url_for('resend_otp') }}" style="margin-top:14px">
+      <button class="btn ghost block" type="submit">Resend code</button>
+    </form>
+    <p class="small" style="margin:16px 0 0;text-align:center"><a href="{{ url_for('register') }}">Start over</a></p>
+  </div>
+</main>
+</body>
+</html>

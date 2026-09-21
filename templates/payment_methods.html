@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Methods | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Account</div>
+    <h1>My Account</h1>
+    <div class="account-grid">
+      <div>{% include '_account_nav.html' with context %}</div>
+      <div class="account-card account-content">
+        <h2 style="margin-top:0">Payment methods</h2>
+        <p class="muted">Saved payment methods aren't available yet — for now, pay at pickup or choose the online
+           payment option when you check out. We'll let you know when card-on-file is ready.</p>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

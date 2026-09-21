@@ -1,0 +1,8 @@
+<nav class="account-nav">
+  <a href="{{ url_for('account') }}" class="{{ 'active' if active == 'dashboard' else '' }}">Dashboard</a>
+  <a href="{{ url_for('order_history') }}" class="{{ 'active' if active == 'orders' else '' }}">Orders</a>
+  <a href="{{ url_for('addresses') }}" class="{{ 'active' if active == 'addresses' else '' }}">Addresses</a>
+  <a href="{{ url_for('payment_methods') }}" class="{{ 'active' if active == 'payment' else '' }}">Payment Methods</a>
+  <a href="{{ url_for('account_details') }}" class="{{ 'active' if active == 'details' else '' }}">Account Details</a>
+  <a href="{{ url_for('logout') }}">Log out</a>
+</nav>
