@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ biz.name }} | Dry Ice Pickup in Nicholasville &amp; Lexington</title>
+<meta name="description" content="Dry ice pellets with fast local pickup in Nicholasville and Lexington, Kentucky. Clear pricing, easy online ordering, same-day pickup 9 AM–5 PM.">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+<header class="header">
+  <div class="wrap nav">
+    <a class="brand" href="#home">
+      <div class="flake">❄</div>
+      <span><b>{{ biz.name }}</b><small>{{ biz.tagline }}</small></span>
+    </a>
+    <nav class="navlinks">
+      <a href="#pricing">Pricing</a>
+      <a href="#estimator">How Much?</a>
+      <a href="#order">Order</a>
+      <a href="#pickup">Pickup</a>
+      <a href="#guides">Guides</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <a class="btn primary small" href="#order">Order Now</a>
+  </div>
+</header>
+
+<main>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="wrap">
+    <div class="hero-inner">
+      <div class="eyebrow">Same-day local pickup</div>
+      <h1>Dry Ice Pellets in Nicholasville / Lexington — Pick Up Today.</h1>
+      <p>Dry ice with fast local fulfillment. Available at {{ biz.street }}, {{ biz.city }}. Open Monday–Friday
+         from 9 AM to 5 PM. Order online and we'll have it ready when you arrive.</p>
+      <div class="hero-actions">
+        <span class="status"><span class="dot"></span> Open now · In stock · Ready to fill</span>
+        <a class="btn primary" href="#order">Order for pickup →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="eyebrow">Choose your amount</div>
+    <h2>Simple, Upfront Dry Ice Pricing.</h2>
+    <p class="lead">No hidden fees. Order online or walk in while supply is available.</p>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="price">
+          <thead>
+            <tr><th>Size</th><th>Price</th><th>Price per pound</th><th>Best for</th></tr>
+          </thead>
+          <tbody>
+            {% for bag in bags %}
+            <tr>
+              <td>{{ bag.name }}</td>
+              <td class="price-cell">${{ bag.price }}</td>
+              <td>{{ bag.per_lb }}</td>
+              <td>{{ bag.best_for }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="note-bar">
+      <span><b>Foam containers:</b>
+        {% for c in containers if c.price > 0 %}{{ c.label }} ${{ c.price }}{% if not loop.last %} · {% endif %}{% endfor %}
+      </span>
+      <span><b>Need 200+ lbs?</b> Call or text
+        <a href="{{ biz.phone_href }}"><b>{{ biz.phone }}</b></a> for bulk pricing.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ESTIMATOR -->
+<section class="section soft" id="estimator">
+  <div class="wrap">
+    <div class="eyebrow">Simple estimator</div>
+    <h2>How Much Dry Ice Do I Need?</h2>
+    <p class="lead">Get a quick starting recommendation based on what you're doing, how long you need it,
+       and your container size.</p>
+
+    <div class="estimator">
+      <div class="card">
+        <div class="field">
+          <label for="calcUse">What are you using dry ice for?</label>
+          <select id="calcUse">
+            <option value="ship">Shipping frozen food</option>
+            <option value="cooler">Keeping a cooler cold</option>
+            <option value="fog">Halloween / party fog</option>
+            <option value="freezer">Freezer backup / power outage</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="calcDays">How long do you need it?</label>
+          <select id="calcDays">
+            <option value="0.5">Up to 12 hours</option>
+            <option value="1">About 24 hours</option>
+            <option value="2">About 48 hours</option>
+            <option value="3" selected>About 72 hours</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="calcSize">Cooler / container size</label>
+          <select id="calcSize">
+            <option value="1">Small (under 25 qt)</option>
+            <option value="1.4" selected>Medium (25–50 qt)</option>
+            <option value="2">Large (50–100 qt)</option>
+            <option value="3">Extra large / chest freezer</option>
+          </select>
+        </div>
+        <button class="btn primary block" id="estimateBtn">Get recommendation</button>
+      </div>
+
+      <div class="card rec">
+        <div class="eyebrow">Starting recommendation</div>
+        <div class="big" id="recRange">—</div>
+        <p id="recCopy">Tell us about your job and we'll suggest a practical starting range.</p>
+        <p class="fineprint">Actual use varies with insulation, ambient temperature, how often the container is
+           opened, and how full it is. This is a planning estimate, not a guarantee.</p>
+        <button class="btn ghost block" id="addRecBtn">Add <span id="recBagLabel">recommended bag</span> to my order →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ORDER BUILDER -->
+<section class="section" id="order">
+  <div class="wrap">
+    <div class="order-head">
+      <div>
+        <div class="eyebrow">Ready to order?</div>
+        <h2>Build Your Pickup Order.</h2>
+        <p class="lead" style="margin-bottom:0">Choose your bags and container.
+           Your total updates instantly.</p>
+      </div>
+      <a class="btn ghost" href="{{ biz.phone_href }}">Prefer to call? {{ biz.phone }}</a>
+    </div>
+
+    <div class="order-shell">
+      <div class="panel">
+        <div class="step-title"><span class="num">1</span>Choose bag size(s)</div>
+        {% for bag in bags %}
+        <div class="bag-row">
+          <div><b>{{ bag.name }} · ${{ bag.price }}</b><span>{{ bag.per_lb }}</span></div>
+          <div class="counter">
+            <button type="button" aria-label="Remove one {{ bag.name }}" data-qty="{{ loop.index0 }}" data-step="-1">−</button>
+            <span id="qty{{ loop.index0 }}">0</span>
+            <button type="button" aria-label="Add one {{ bag.name }}" data-qty="{{ loop.index0 }}" data-step="1">+</button>
+          </div>
+        </div>
+        {% endfor %}
+
+        <div class="step-title" style="margin-top:24px"><span class="num">2</span>Add a container</div>
+        <div class="opt-grid" id="containers">
+          {% for c in containers %}
+          <label class="opt">
+            <input type="radio" name="container" value="{{ c.price }}" {% if loop.first %}checked{% endif %}>
+            {{ c.label }} <b>${{ c.price }}</b>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside class="summary">
+        <div class="step-title"><span class="num">3</span>Review order</div>
+        <div id="summaryItems"><p class="muted small" style="margin:0 0 8px">Choose a bag size to begin.</p></div>
+        <div class="sum-line"><span>Container</span><strong id="containerTotal">$0</strong></div>
+        <div class="sum-line total"><span>Total</span><span id="grandTotal">$0.00</span></div>
+
+        <div class="checks">
+          <label><input type="checkbox" id="age"> I am 18 or older and will bring a valid ID at pickup.</label>
+          <label><input type="checkbox" id="airtight"> I understand dry ice must never be stored in an airtight container.</label>
+          <label><input type="checkbox" id="safetyCheck"> I have read and agree to the safety guidance.</label>
+        </div>
+
+        <div class="opt-grid" style="margin-bottom:14px">
+          <label class="opt"><input type="radio" name="pay" value="online" checked> Pay online</label>
+          <label class="opt"><input type="radio" name="pay" value="pickup"> Pay at pickup</label>
+        </div>
+
+        <button class="btn primary block" id="checkoutBtn">Continue to Checkout →</button>
+        <div class="notice" id="orderNotice">Orders are validated by the Flask backend. Connect Stripe or Square
+          for live payments and your SMS/email provider for automated confirmations.</div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- PICKUP INSTRUCTIONS -->
+<section class="section soft" id="pickup">
+  <div class="wrap">
+    <div class="eyebrow">No pickup anxiety</div>
+    <h2>Pickup Instructions</h2>
+    <p class="lead">Know exactly where to go, what to bring, and what happens when you arrive.</p>
+
+    <div class="pickup-grid">
+      <div class="sign"><div class="sign-plate">❄ {{ biz.name }}</div></div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="n">1</div>
+          <div><b>Find us</b><p>{{ biz.street }}, {{ biz.city }}. We're in the Park Central business park,
+            just off US-27.</p></div>
+        </div>
+        <div class="step">
+          <div class="n">2</div>
+          <div><b>Park near the pickup entrance</b><p>Look for the {{ biz.name }} sign at Suite B. Please come to
+            the pickup door on the right side of the building — not the main office entrance.</p></div>
+        </div>
+        <div class="step">
+          <div class="n">3</div>
+          <div><b>Text us when you arrive</b><p>Call or text {{ biz.phone }} with your order number so we can
+            match your order quickly.</p></div>
+        </div>
+        <div class="step">
+          <div class="n">4</div>
+          <div><b>Bring your ID and container</b><p>You must be 18+ for pickup. Bring a ventilated cooler or add
+            a foam container when ordering.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="location-card">
+      <div class="location-info">
+        <h3>Pickup location</h3>
+        <div class="info-row"><b>Address</b><div>{{ biz.street }}<br>{{ biz.city }}</div></div>
+        <div class="info-row"><b>Hours</b><div>{% for h in biz.hours %}{{ h }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div></div>
+        <div class="info-row"><b>Phone</b><div><a href="{{ biz.phone_href }}">{{ biz.phone }}</a></div></div>
+        <div class="info-row"><b>Email</b><div><a href="mailto:{{ biz.email }}">{{ biz.email }}</a></div></div>
+      </div>
+      <div class="mapbox">
+        <iframe title="Map to {{ biz.name }} pickup location" loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://www.google.com/maps?q={{ biz.map_query }}&output=embed"></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section class="section uses" id="uses">
+  <div class="wrap">
+    <h2>Reliable Supply. Premium Quality.</h2>
+    <p class="lead">From shipping and food preservation to events, emergencies, outdoor adventures, and industrial
+       work, our dry ice pellets are made for jobs that need serious cold — without the guesswork.</p>
+
+    <div class="use-grid">
+      {% for u in use_cases %}
+      <article class="use-card">
+        <div class="use-media"
+             style="background-image:url('{{ url_for('static', filename='images/' ~ u.image) }}'),linear-gradient(150deg,{{ u.fallback }})"></div>
+        <div class="use-body">
+          <h3>{{ u.title }}</h3>
+          <p>{{ u.text }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    <div class="uses-cta">
+      <div>
+        <h3>Whatever the job, start with the right amount.</h3>
+        <p>Our pelletized dry ice is easy to portion, pack, and distribute. Choose from
+           {% for b in bags %}{{ b.lbs }}{% if not loop.last %}, {% endif %}{% endfor %} lb quantities
+           for same-day local pickup.</p>
+      </div>
+      <a class="btn primary" href="#order">Order for pickup →</a>
+    </div>
+  </div>
+</section>
+
+<!-- SAFETY -->
+<section class="section" id="safety">
+  <div class="wrap">
+    <div class="eyebrow">Handled with care</div>
+    <h2>Safety &amp; Handling</h2>
+    <p class="lead">Dry ice is extremely cold and releases carbon dioxide gas as it sublimates. Use it only with
+       proper handling and ventilation.</p>
+
+    <div class="safety-grid">
+      <div class="safe-list">
+        {% for r in safety_rules %}
+        <div class="safe-item">
+          <div class="ic">{{ r.icon }}</div>
+          <div><b>{{ r.title }}</b><p>{{ r.text }}</p></div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="wont">
+        <h3>What we won't do</h3>
+        <p class="small" style="color:#8a5757">To keep pickup simple and safe:</p>
+        <ul>
+          {% for item in wont_do %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+        <p class="ask"><b>Questions?</b> Call or text before pickup and we'll help you plan.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GUIDES -->
+<section class="section soft" id="guides">
+  <div class="wrap">
+    <div class="eyebrow">Helpful resources</div>
+    <h2>Dry Ice Guides</h2>
+    <p class="lead">Answers the questions people usually have before they buy.</p>
+
+    <div class="guide-grid">
+      {% for g in guides %}
+      <article class="guide">
+        <div class="th">{{ g.icon }}</div>
+        <div><h3>{{ g.title }}</h3><p>{{ g.text }}</p></div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="eyebrow">Common questions</div>
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq">
+      {% for f in faqs %}
+      <div class="faq-item">
+        <button type="button" class="faq-q">{{ f.q }}<span class="chev">+</span></button>
+        <div class="faq-a">{{ f.a }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="section soft" id="contact">
+  <div class="wrap">
+    <div class="eyebrow">Questions before a large order?</div>
+    <h2>Get in Touch</h2>
+    <p class="lead">If you have an unusual quantity, use case, or pickup question, reach us directly.</p>
+
+    <div class="contact-grid">
+      <div class="contact-card">
+        <div class="info-row"><b>Call / Text</b><div><a href="{{ biz.phone_href }}">{{ biz.phone }}</a></div></div>
+        <div class="info-row"><b>Email</b><div><a href="mailto:{{ biz.email }}">{{ biz.email }}</a></div></div>
+        <div class="info-row"><b>Address</b><div>{{ biz.street }}<br>{{ biz.city }}</div></div>
+        <div class="info-row"><b>Hours</b><div>{% for h in biz.hours %}{{ h }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div></div>
+        <a class="btn primary" style="margin-top:18px" href="#order">Order for pickup →</a>
+      </div>
+      <div class="mapbox">
+        <iframe title="{{ biz.name }} location map" loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://www.google.com/maps?q={{ biz.map_query }}&output=embed"></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footgrid">
+      <div>
+        <div class="brand"><div class="flake">❄</div><span><b>{{ biz.name }}</b><small>{{ biz.tagline }}</small></span></div>
+        <p style="margin-top:16px;max-width:320px">Simple local dry ice pickup for Nicholasville, Lexington,
+           and Central Kentucky.</p>
+      </div>
+      <div>
+        <h4>Order</h4>
+        <a href="#order">Order pickup</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#estimator">How much do I need?</a>
+      </div>
+      <div>
+        <h4>Learn</h4>
+        <a href="#guides">Guides</a>
+        <a href="#safety">Safety</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="#contact">Contact</a>
+        <a href="#pickup">Pickup instructions</a>
+        <a href="{{ biz.phone_href }}">{{ biz.phone }}</a>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© {{ year }} {{ biz.name }}. All rights reserved.</span>
+      <span>Front-end prototype — confirm hours, ZIP, and payment services before launch.</span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">Order updated.</div>
+
+<script>
+  window.BAGS = {{ bags | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
