@@ -124,9 +124,21 @@ document.querySelectorAll('[data-next]').forEach((btn) => {
         return;
       }
     }
+    if (currentStep === 3 && (!$('age').checked || !$('airtight').checked || !$('safetyCheck').checked)) {
+      toast('Please confirm all three safety checkboxes.');
+      return;
+    }
     goToStep(currentStep + 1);
   });
 });
+
+const paymentButton = document.querySelector('[data-step="3"] [data-next]');
+const safetyChecks = ['age', 'airtight', 'safetyCheck'].map((id) => $(id));
+const updatePaymentButton = () => {
+  paymentButton.disabled = !safetyChecks.every((check) => check.checked);
+};
+safetyChecks.forEach((check) => check.addEventListener('change', updatePaymentButton));
+updatePaymentButton();
 
 document.querySelectorAll('[data-back]').forEach((btn) => {
   btn.addEventListener('click', () => goToStep(currentStep - 1));
@@ -154,7 +166,10 @@ async function checkout() {
   };
 
   const btn = $('checkoutBtn');
+  const originalLabel = btn.textContent;
   btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  btn.textContent = 'Processing...';
 
   try {
     const res = await fetch('/api/order', {
@@ -184,6 +199,8 @@ async function checkout() {
     toast('Could not reach the server. Is the Flask app running?');
   } finally {
     btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    btn.textContent = originalLabel;
   }
 }
 
