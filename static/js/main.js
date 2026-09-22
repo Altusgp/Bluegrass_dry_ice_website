@@ -169,6 +169,11 @@ async function checkout() {
       return;
     }
 
+    if (data.checkout_url) {
+      window.location.href = data.checkout_url;
+      return;
+    }
+
     toast(data.message);
     const notice = $('orderNotice');
     notice.classList.add('ok');

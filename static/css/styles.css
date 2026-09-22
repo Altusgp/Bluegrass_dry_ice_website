@@ -103,6 +103,13 @@ p{margin:0 0 16px}
 .admin-stat .num{font-size:2rem;font-weight:800;color:var(--navy)}
 .admin-stat .label{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 @media(max-width:640px){.admin-stats{grid-template-columns:1fr}}
+.status-select{padding:7px 10px;border:1px solid var(--line-2);border-radius:8px;background:#fff;font-size:.82rem;font-weight:700;color:var(--navy)}
+.status-badge{display:inline-block;font-size:.72rem;font-weight:800;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em}
+.status-badge.pending{background:#f1f5f9;color:#475569}
+.status-badge.processing{background:var(--blue-soft);color:var(--blue)}
+.status-badge.ready_for_pickup{background:#fdefd8;color:#a5690a}
+.status-badge.picked_up{background:#e3f7e9;color:#1b8a4c}
+.status-badge.cancelled{background:var(--rose-bg);color:var(--rose-ink)}
 
 /* ---------- header ---------- */
 .header{position:sticky;top:0;z-index:80;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);

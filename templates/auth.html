@@ -13,6 +13,7 @@
     <h1>{{ 'Welcome back.' if mode == 'login' else 'Create your account.' }}</h1>
     <p class="muted">{{ 'Sign in to view your orders and place a pickup reservation.' if mode == 'login' else 'Use your account to place orders and review order history.' }}</p>
     {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+    {% if notice %}<p class="small" style="color:#1b8a4c;font-weight:700">{{ notice }}</p>{% endif %}
     <form class="form-stack" method="post">
       {% if mode == 'register' %}
       <label>Name<input name="name" autocomplete="name" value="{{ form.name if form else '' }}" required></label>
@@ -22,6 +23,9 @@
       <label>Phone<input type="tel" name="phone" autocomplete="tel" value="{{ form.phone if form else '' }}" required></label>
       {% endif %}
       <label>Password<input type="password" name="password" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" minlength="8" required></label>
+      {% if mode == 'login' %}
+      <p class="small" style="margin:-6px 0 0;text-align:right"><a href="{{ url_for('forgot_password') }}">Forgot password?</a></p>
+      {% endif %}
       {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
       <button class="btn primary block" type="submit">{{ 'Sign in' if mode == 'login' else 'Create account' }}</button>
     </form>

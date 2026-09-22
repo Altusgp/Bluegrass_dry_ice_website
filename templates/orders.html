@@ -21,7 +21,12 @@
           {% for order in orders %}
           <div class="order-row">
             <div><strong>{{ order['id'] }}</strong><div class="small muted">{{ order['placed_at'] }} · {{ order['total_lbs'] }} lb{% if order['pickup_date'] %} · Pickup: {{ order['pickup_date'] }}{% endif %}</div></div>
-            <div style="text-align:right"><strong>${{ '%.2f'|format(order['total']) }}</strong><div class="small muted">{{ order['payment_status'] }}</div></div>
+            <div style="text-align:right">
+              <strong>${{ '%.2f'|format(order['total']) }}</strong>
+              <div class="small muted">{{ order['payment_status'] }}</div>
+              {% set s = statuses.get(order['order_status']) %}
+              {% if s %}<span class="status-badge {{ order['order_status'] }}" style="margin-top:6px">{{ s.label }}</span>{% endif %}
+            </div>
           </div>
           {% endfor %}
         </div>

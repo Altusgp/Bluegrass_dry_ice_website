@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order confirmed | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="auth-shell">
+  <div class="auth-card">
+    <div class="eyebrow">Bluegrass Dry Ice</div>
+    {% if order['payment_status'] == 'paid' %}
+    <h1>Payment received.</h1>
+    <p class="muted">Order <b>{{ order['id'] }}</b> is paid and reserved for pickup.</p>
+    {% else %}
+    <h1>Order reserved.</h1>
+    <p class="muted">Order <b>{{ order['id'] }}</b> is reserved. If you were sent to a payment page and it didn't
+       complete, your order is still on file as unpaid — you can pay at pickup.</p>
+    {% endif %}
+    <div class="review-block" style="margin-top:20px">
+      <dt>Total</dt><dd>${{ '%.2f'|format(order['total']) }}</dd>
+      <dt>Status</dt><dd>{{ order['payment_status'] }}</dd>
+      {% if order['pickup_date'] %}<dt>Preferred pickup date</dt><dd>{{ order['pickup_date'] }}</dd>{% endif %}
+    </div>
+    <div class="form-stack" style="margin-top:22px">
+      <a class="btn primary block" href="{{ url_for('order_history') }}">View order history</a>
+      <a class="btn ghost block" href="{{ url_for('home') }}">Back to the website</a>
+    </div>
+  </div>
+</main>
+</body>
+</html>

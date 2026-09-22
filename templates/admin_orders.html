@@ -19,7 +19,7 @@
         {% if orders %}
         <table class="admin-table">
           <thead>
-            <tr><th>Order</th><th>Customer</th><th>Placed</th><th>Pickup date</th><th>Total</th><th>Payment</th><th></th></tr>
+            <tr><th>Order</th><th>Customer</th><th>Placed</th><th>Pickup date</th><th>Total</th><th>Payment</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             {% for o in orders %}
@@ -30,6 +30,15 @@
               <td>{{ o['pickup_date'] or '—' }}</td>
               <td>${{ '%.2f'|format(o['total']) }}</td>
               <td>{{ o['payment_status'] }}</td>
+              <td>
+                <form method="post" action="{{ url_for('admin_update_order_status', order_id=o['id']) }}">
+                  <select name="order_status" class="status-select" onchange="this.form.submit()">
+                    {% for key, s in statuses.items() %}
+                    <option value="{{ key }}" {% if o['order_status'] == key %}selected{% endif %}>{{ s.label }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
               <td>
                 <form method="post" action="{{ url_for('admin_delete_order', order_id=o['id']) }}" onsubmit="return confirm('Delete this order?')">
                   <button class="btn danger small" type="submit">Delete</button>

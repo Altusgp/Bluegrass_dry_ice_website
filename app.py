@@ -14,12 +14,14 @@ import os
 import secrets
 import smtplib
 import sqlite3
+import time
 from uuid import uuid4
 
 from dotenv import load_dotenv
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 import pymysql
 from pymysql.cursors import DictCursor
+import requests
 import stripe
 from werkzeug.security import check_password_hash, generate_password_hash
 from content import BAGS, BUSINESS, CONTAINERS, FAQS, GUIDES, SAFETY_RULES, USE_CASES, WONT_DO
@@ -49,22 +51,101 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER)
 SMTP_USE_SSL = os.environ.get("SMTP_USE_SSL", "false").lower() == "true"
 
+MS_TENANT_ID = os.environ.get("MS_TENANT_ID")
+MS_CLIENT_ID = os.environ.get("MS_CLIENT_ID")
+MS_CLIENT_SECRET = os.environ.get("MS_CLIENT_SECRET")
+GRAPH_SENDER = os.environ.get("GRAPH_SENDER", SMTP_FROM)
+GRAPH_SCOPE = os.environ.get("GRAPH_SCOPE", "https://graph.microsoft.com/.default")
+GRAPH_API_BASE = os.environ.get("GRAPH_API_BASE", "https://graph.microsoft.com/v1.0")
+
+ADMIN_ORDER_EMAIL = os.environ.get("ADMIN_ORDER_EMAIL", "info@dryiceky.com")
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
+stripe.api_key = STRIPE_SECRET_KEY
+
+QB_CLIENT_ID = os.environ.get("QB_CLIENT_ID")
+QB_CLIENT_SECRET = os.environ.get("QB_CLIENT_SECRET")
+QB_ENVIRONMENT = os.environ.get("QB_ENVIRONMENT", "sandbox").lower()
+QB_REDIRECT_URI = os.environ.get("QB_REDIRECT_URI")
+QB_AUTH_BASE = "https://appcenter.intuit.com/connect/oauth2"
+QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
+QB_PAYMENTS_API_BASE = (
+    "https://sandbox.api.intuit.com" if QB_ENVIRONMENT == "sandbox" else "https://api.intuit.com"
+)
+
 OTP_TTL_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5
+
+ORDER_STATUSES = {
+    "pending": {"label": "Pending", "message": "Your order has been received and is waiting to be processed."},
+    "processing": {"label": "Processing", "message": "Your order is being processed."},
+    "ready_for_pickup": {"label": "Ready for Pickup", "message": "Your order is ready for pickup!"},
+    "picked_up": {"label": "Picked Up", "message": "Your order has been picked up. Thanks for choosing us!"},
+    "cancelled": {"label": "Cancelled", "message": "Your order has been cancelled."},
+}
 
 # Pounds of dry ice consumed per day, per use case, before the container multiplier.
 USE_RATES = {"ship": 8, "cooler": 6, "fog": 10, "freezer": 10}
 
+_graph_token_cache = {"token": None, "expires_at": 0}
 
-def send_email(to_addr, subject, body):
+
+def _get_graph_token():
+    now = time.time()
+    if _graph_token_cache["token"] and now < _graph_token_cache["expires_at"] - 60:
+        return _graph_token_cache["token"]
+    resp = requests.post(
+        f"https://login.microsoftonline.com/{MS_TENANT_ID}/oauth2/v2.0/token",
+        data={
+            "client_id": MS_CLIENT_ID,
+            "client_secret": MS_CLIENT_SECRET,
+            "scope": GRAPH_SCOPE,
+            "grant_type": "client_credentials",
+        },
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    _graph_token_cache["token"] = data["access_token"]
+    _graph_token_cache["expires_at"] = now + data.get("expires_in", 3600)
+    return _graph_token_cache["token"]
+
+
+def _send_via_graph(to_addr, subject, body, html=None):
+    token = _get_graph_token()
+    message_body = {"contentType": "HTML", "content": html} if html else {"contentType": "Text", "content": body}
+    resp = requests.post(
+        f"{GRAPH_API_BASE}/users/{GRAPH_SENDER}/sendMail",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json={
+            "message": {
+                "subject": subject,
+                "body": message_body,
+                "toRecipients": [{"emailAddress": {"address": to_addr}}],
+            },
+            "saveToSentItems": "false",
+        },
+        timeout=10,
+    )
+    resp.raise_for_status()
+
+
+def send_email(to_addr, subject, body, html=None):
     if EMAIL_BACKEND == "console":
-        print(f"\n----- EMAIL (console backend) -----\nTo: {to_addr}\nSubject: {subject}\n\n{body}\n------------------------------------\n", flush=True)
+        print(f"\n----- EMAIL (console backend) -----\nTo: {to_addr}\nSubject: {subject}\n\n{body}"
+              f"{'  [+ HTML version]' if html else ''}\n------------------------------------\n", flush=True)
+        return
+    if EMAIL_BACKEND == "graph":
+        _send_via_graph(to_addr, subject, body, html=html)
         return
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = SMTP_FROM
     msg["To"] = to_addr
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
     smtp_class = smtplib.SMTP_SSL if SMTP_USE_SSL else smtplib.SMTP
     with smtp_class(SMTP_HOST, SMTP_PORT, timeout=10) as server:
         if not SMTP_USE_SSL:
@@ -80,6 +161,119 @@ def send_otp_email(to_addr, code):
         f"Your verification code is {code}.\n\nIt expires in {OTP_TTL_MINUTES} minutes. "
         "If you didn't request this, you can ignore this email.",
     )
+
+
+def send_order_emails(order, customer_name, customer_email, customer_phone):
+    order_history_url = url_for("order_history", _external=True)
+    admin_orders_url = url_for("admin_orders", _external=True)
+
+    items_lines = "\n".join(f"  {i['qty']} x {i['name']} - ${i['line_total']}" for i in order["items"])
+    customer_text = (
+        f"Thanks, {customer_name}!\n\nOrder {order['id']} is reserved.\n\n{items_lines}\n"
+        f"  Container: {order['container']}\n  Total: ${order['total']:.2f}\n\n"
+        f"Payment: {'Pay online' if order['payment'] == 'online' else 'Pay at pickup'} ({order['payment_status']})\n"
+        + (f"Preferred pickup date: {order['pickup_date']}\n" if order["pickup_date"] else "")
+        + f"\nPickup: {BUSINESS['street']}, {BUSINESS['city']}\nView your order: {order_history_url}"
+    )
+    try:
+        send_email(
+            customer_email,
+            f"Your {BUSINESS['name']} order {order['id']}",
+            customer_text,
+            html=render_template(
+                "email/order_customer.html", order=order, biz=BUSINESS,
+                customer_name=customer_name, order_history_url=order_history_url,
+            ),
+        )
+    except Exception:
+        pass
+
+    admin_text = (
+        f"New order {order['id']} from {customer_name} ({customer_email}, {customer_phone}).\n\n{items_lines}\n"
+        f"  Container: {order['container']}\n  Total: ${order['total']:.2f}\n\n"
+        f"Payment: {'Pay online' if order['payment'] == 'online' else 'Pay at pickup'} ({order['payment_status']})\n"
+        + (f"Preferred pickup date: {order['pickup_date']}\n" if order["pickup_date"] else "")
+        + (f"Notes: {order['notes']}\n" if order["notes"] else "")
+        + f"\nAdmin panel: {admin_orders_url}"
+    )
+    try:
+        send_email(
+            ADMIN_ORDER_EMAIL,
+            f"New order {order['id']} - {BUSINESS['name']}",
+            admin_text,
+            html=render_template(
+                "email/order_admin.html", order=order, biz=BUSINESS,
+                customer_name=customer_name, customer_email=customer_email, customer_phone=customer_phone,
+                admin_orders_url=admin_orders_url,
+            ),
+        )
+    except Exception:
+        pass
+
+
+def send_order_status_email(order, customer_name, customer_email):
+    status = ORDER_STATUSES.get(order["order_status"])
+    if not status:
+        return
+    order_history_url = url_for("order_history", _external=True)
+    text = (
+        f"Hi {customer_name},\n\nOrder {order['id']} status: {status['label']}\n\n{status['message']}\n\n"
+        f"View your order: {order_history_url}"
+    )
+    try:
+        send_email(
+            customer_email,
+            f"Order {order['id']} update: {status['label']} - {BUSINESS['name']}",
+            text,
+            html=render_template(
+                "email/order_status.html", order=order, biz=BUSINESS, status=status,
+                customer_name=customer_name, order_history_url=order_history_url,
+            ),
+        )
+    except Exception:
+        pass
+
+
+def _save_qb_tokens(data, realm_id=None):
+    now = datetime.now()
+    access_expires = (now + timedelta(seconds=data["expires_in"])).isoformat()
+    refresh_expires = (now + timedelta(seconds=data["x_refresh_token_expires_in"])).isoformat()
+    existing = query_db("SELECT id, realm_id FROM qb_tokens WHERE id = 1", fetchone=True)
+    final_realm_id = realm_id or (existing["realm_id"] if existing else None)
+    if existing:
+        query_db(
+            "UPDATE qb_tokens SET access_token=%s, refresh_token=%s, realm_id=%s, "
+            "access_expires_at=%s, refresh_expires_at=%s WHERE id=1",
+            (data["access_token"], data["refresh_token"], final_realm_id, access_expires, refresh_expires),
+        )
+    else:
+        query_db(
+            "INSERT INTO qb_tokens (id, access_token, refresh_token, realm_id, access_expires_at, refresh_expires_at) "
+            "VALUES (1, %s, %s, %s, %s, %s)",
+            (data["access_token"], data["refresh_token"], final_realm_id, access_expires, refresh_expires),
+        )
+    get_db().commit()
+
+
+def get_qb_access_token():
+    """Return (access_token, realm_id) for QuickBooks Payments, refreshing if needed. (None, None) if not connected."""
+    row = query_db("SELECT * FROM qb_tokens WHERE id = 1", fetchone=True)
+    if not row:
+        return None, None
+    if datetime.now() < datetime.fromisoformat(row["access_expires_at"]) - timedelta(minutes=2):
+        return row["access_token"], row["realm_id"]
+
+    resp = requests.post(
+        QB_TOKEN_URL,
+        auth=(QB_CLIENT_ID, QB_CLIENT_SECRET),
+        headers={"Accept": "application/json"},
+        data={"grant_type": "refresh_token", "refresh_token": row["refresh_token"]},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    _save_qb_tokens(data, realm_id=row["realm_id"])
+    return data["access_token"], row["realm_id"]
 
 
 def column_exists(cursor, table, column):
@@ -156,6 +350,7 @@ def init_db():
                 total DECIMAL(10, 2) NOT NULL,
                 pickup_date VARCHAR(20) NOT NULL DEFAULT '',
                 notes VARCHAR(500) NOT NULL DEFAULT '',
+                order_status VARCHAR(30) NOT NULL DEFAULT 'pending',
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """)
@@ -163,6 +358,8 @@ def init_db():
             cursor.execute("ALTER TABLE orders ADD COLUMN pickup_date VARCHAR(20) NOT NULL DEFAULT ''")
         if not column_exists(cursor, "orders", "notes"):
             cursor.execute("ALTER TABLE orders ADD COLUMN notes VARCHAR(500) NOT NULL DEFAULT ''")
+        if not column_exists(cursor, "orders", "order_status"):
+            cursor.execute("ALTER TABLE orders ADD COLUMN order_status VARCHAR(30) NOT NULL DEFAULT 'pending'")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS addresses (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -174,6 +371,16 @@ def init_db():
                 state VARCHAR(50) NOT NULL,
                 zip VARCHAR(20) NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS qb_tokens (
+                id INT PRIMARY KEY,
+                access_token TEXT NOT NULL,
+                refresh_token TEXT NOT NULL,
+                realm_id VARCHAR(50) NOT NULL,
+                access_expires_at VARCHAR(30) NOT NULL,
+                refresh_expires_at VARCHAR(30) NOT NULL
             )
         """)
     else:
@@ -199,6 +406,7 @@ def init_db():
                 total REAL NOT NULL,
                 pickup_date TEXT NOT NULL DEFAULT '',
                 notes TEXT NOT NULL DEFAULT '',
+                order_status TEXT NOT NULL DEFAULT 'pending',
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
             CREATE TABLE IF NOT EXISTS addresses (
@@ -212,6 +420,14 @@ def init_db():
                 zip TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
+            CREATE TABLE IF NOT EXISTS qb_tokens (
+                id INTEGER PRIMARY KEY,
+                access_token TEXT NOT NULL,
+                refresh_token TEXT NOT NULL,
+                realm_id TEXT NOT NULL,
+                access_expires_at TEXT NOT NULL,
+                refresh_expires_at TEXT NOT NULL
+            );
         """)
         if not column_exists(cursor, "users", "phone"):
             cursor.execute("ALTER TABLE users ADD COLUMN phone TEXT NOT NULL DEFAULT ''")
@@ -221,6 +437,8 @@ def init_db():
             cursor.execute("ALTER TABLE orders ADD COLUMN pickup_date TEXT NOT NULL DEFAULT ''")
         if not column_exists(cursor, "orders", "notes"):
             cursor.execute("ALTER TABLE orders ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+        if not column_exists(cursor, "orders", "order_status"):
+            cursor.execute("ALTER TABLE orders ADD COLUMN order_status TEXT NOT NULL DEFAULT 'pending'")
     db.commit()
 
 
@@ -412,6 +630,99 @@ def logout():
     return redirect(url_for("home"))
 
 
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        user = query_db("SELECT id FROM users WHERE email = %s", (email,), fetchone=True)
+        if user:
+            code = f"{secrets.randbelow(1_000_000):06d}"
+            session["password_reset"] = {
+                "user_id": user["id"],
+                "email": email,
+                "code": code,
+                "expires_at": (datetime.now() + timedelta(minutes=OTP_TTL_MINUTES)).isoformat(),
+                "attempts": 0,
+            }
+            try:
+                send_email(
+                    email,
+                    f"Your {BUSINESS['name']} password reset code",
+                    f"Your password reset code is {code}.\n\nIt expires in {OTP_TTL_MINUTES} minutes. "
+                    "If you didn't request this, you can ignore this email.",
+                )
+            except Exception:
+                session.pop("password_reset", None)
+        return redirect(url_for("reset_password", email=email))
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password", methods=["GET", "POST"])
+def reset_password():
+    pending = session.get("password_reset")
+    email = pending["email"] if pending else request.args.get("email", "")
+
+    if request.method == "POST":
+        if not pending:
+            return render_template("reset_password.html", email=email, error="That code has expired. Please request a new one.")
+
+        code = request.form.get("code", "").strip()
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if datetime.now() > datetime.fromisoformat(pending["expires_at"]):
+            session.pop("password_reset", None)
+            return render_template("forgot_password.html", error="That code expired. Please request a new one.")
+
+        if code != pending["code"]:
+            pending["attempts"] += 1
+            if pending["attempts"] >= OTP_MAX_ATTEMPTS:
+                session.pop("password_reset", None)
+                return render_template("forgot_password.html", error="Too many incorrect attempts. Please start over.")
+            session["password_reset"] = pending
+            return render_template("reset_password.html", email=email, error="Incorrect code. Please try again.")
+
+        if new_password != confirm_password:
+            return render_template("reset_password.html", email=email, error="New password and confirmation don't match.")
+        if len(new_password) < 8:
+            return render_template("reset_password.html", email=email, error="Password must be at least 8 characters.")
+
+        query_db(
+            "UPDATE users SET password_hash = %s WHERE id = %s",
+            (generate_password_hash(new_password), pending["user_id"]),
+        )
+        get_db().commit()
+        session.pop("password_reset", None)
+        return render_template("auth.html", mode="login", notice="Your password was reset. Please sign in.")
+
+    return render_template("reset_password.html", email=email)
+
+
+@app.post("/forgot-password/resend")
+def resend_reset_code():
+    pending = session.get("password_reset")
+    if not pending:
+        return redirect(url_for("forgot_password"))
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    pending["code"] = code
+    pending["expires_at"] = (datetime.now() + timedelta(minutes=OTP_TTL_MINUTES)).isoformat()
+    pending["attempts"] = 0
+    session["password_reset"] = pending
+
+    try:
+        send_email(
+            pending["email"],
+            f"Your {BUSINESS['name']} password reset code",
+            f"Your password reset code is {code}.\n\nIt expires in {OTP_TTL_MINUTES} minutes. "
+            "If you didn't request this, you can ignore this email.",
+        )
+    except Exception:
+        return render_template("reset_password.html", email=pending["email"], error="Couldn't resend the code. Please try again in a moment.")
+
+    return render_template("reset_password.html", email=pending["email"], notice="A new code was sent.")
+
+
 @app.get("/account")
 @login_required
 def account():
@@ -424,7 +735,7 @@ def order_history():
     orders = query_db(
         "SELECT * FROM orders WHERE user_id = %s ORDER BY placed_at DESC", (session["user_id"],), fetchall=True
     )
-    return render_template("orders.html", orders=orders, active="orders")
+    return render_template("orders.html", orders=orders, statuses=ORDER_STATUSES, active="orders")
 
 
 @app.route("/account/addresses", methods=["GET", "POST"])
@@ -623,11 +934,66 @@ def api_order():
         )
     get_db().commit()
 
+    send_order_emails(
+        order,
+        data.get("name") or "",
+        data.get("email") or "",
+        data.get("phone") or "",
+    )
+
+    checkout_url = None
+    if payment == "online" and STRIPE_SECRET_KEY:
+        try:
+            checkout_session = stripe.checkout.Session.create(
+                mode="payment",
+                payment_method_types=["card"],
+                customer_email=data.get("email") or None,
+                line_items=[{
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {"name": f"{BUSINESS['name']} order {order_id}"},
+                        "unit_amount": int(round(order["total"] * 100)),
+                    },
+                    "quantity": 1,
+                }],
+                success_url=url_for("order_confirmation", order_id=order_id, _external=True) + "?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=url_for("home", _external=True) + "#order",
+                metadata={"order_id": order_id, "user_id": str(session["user_id"])},
+            )
+            checkout_url = checkout_session.url
+        except Exception:
+            pass
+
     return jsonify(
         ok=True,
         order=order,
+        checkout_url=checkout_url,
         message=f"Order {order_id} reserved. Total ${order['total']:.2f}.",
     )
+
+
+@app.get("/order/<order_id>/confirm")
+@login_required
+def order_confirmation(order_id):
+    order = query_db(
+        "SELECT * FROM orders WHERE id = %s AND user_id = %s", (order_id, session["user_id"]), fetchone=True
+    )
+    if not order:
+        abort(404)
+
+    session_id = request.args.get("session_id")
+    if session_id and order["payment_status"] != "paid" and STRIPE_SECRET_KEY:
+        try:
+            checkout_session = stripe.checkout.Session.retrieve(session_id)
+            if (checkout_session.payment_status == "paid"
+                    and checkout_session.metadata.get("order_id") == order_id):
+                query_db("UPDATE orders SET payment_status = %s WHERE id = %s", ("paid", order_id))
+                get_db().commit()
+                order = query_db("SELECT * FROM orders WHERE id = %s", (order_id,), fetchone=True)
+        except Exception:
+            pass
+
+    return render_template("order_confirmation.html", order=order)
 
 
 @app.get("/api/orders")
@@ -661,6 +1027,62 @@ def admin_dashboard():
         "addresses": query_db("SELECT COUNT(*) AS c FROM addresses", fetchone=True)["c"],
     }
     return render_template("admin_dashboard.html", counts=counts, active="dashboard")
+
+
+@app.get("/admin/quickbooks")
+@admin_required
+def admin_quickbooks():
+    token_row = query_db("SELECT realm_id, refresh_expires_at FROM qb_tokens WHERE id = 1", fetchone=True)
+    return render_template(
+        "admin_quickbooks.html", active="quickbooks", token=token_row,
+        configured=bool(QB_CLIENT_ID and QB_CLIENT_SECRET and QB_REDIRECT_URI),
+    )
+
+
+@app.get("/admin/quickbooks/connect")
+@admin_required
+def qb_connect():
+    from urllib.parse import urlencode
+    state = secrets.token_urlsafe(16)
+    session["qb_oauth_state"] = state
+    params = {
+        "client_id": QB_CLIENT_ID,
+        "response_type": "code",
+        "scope": "com.intuit.quickbooks.payment",
+        "redirect_uri": QB_REDIRECT_URI,
+        "state": state,
+    }
+    return redirect(f"{QB_AUTH_BASE}?{urlencode(params)}")
+
+
+@app.get("/admin/quickbooks/callback")
+@admin_required
+def qb_callback():
+    if not request.args.get("state") or request.args.get("state") != session.pop("qb_oauth_state", None):
+        abort(400)
+    code = request.args.get("code")
+    realm_id = request.args.get("realmId")
+    if not code or not realm_id:
+        return redirect(url_for("admin_quickbooks"))
+
+    resp = requests.post(
+        QB_TOKEN_URL,
+        auth=(QB_CLIENT_ID, QB_CLIENT_SECRET),
+        headers={"Accept": "application/json"},
+        data={"grant_type": "authorization_code", "code": code, "redirect_uri": QB_REDIRECT_URI},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    _save_qb_tokens(resp.json(), realm_id=realm_id)
+    return redirect(url_for("admin_quickbooks"))
+
+
+@app.post("/admin/quickbooks/disconnect")
+@admin_required
+def qb_disconnect():
+    query_db("DELETE FROM qb_tokens WHERE id = 1")
+    get_db().commit()
+    return redirect(url_for("admin_quickbooks"))
 
 
 @app.get("/admin/users")
@@ -698,11 +1120,11 @@ def admin_toggle_user_admin(user_id):
 @admin_required
 def admin_orders():
     rows = query_db(
-        """SELECT orders.*, users.email AS user_email FROM orders
+        """SELECT orders.*, users.email AS user_email, users.name AS user_name FROM orders
            JOIN users ON users.id = orders.user_id ORDER BY placed_at DESC""",
         fetchall=True,
     )
-    return render_template("admin_orders.html", orders=rows, active="orders")
+    return render_template("admin_orders.html", orders=rows, statuses=ORDER_STATUSES, active="orders")
 
 
 @app.post("/admin/orders/<order_id>/delete")
@@ -710,6 +1132,32 @@ def admin_orders():
 def admin_delete_order(order_id):
     query_db("DELETE FROM orders WHERE id = %s", (order_id,))
     get_db().commit()
+    return redirect(url_for("admin_orders"))
+
+
+@app.post("/admin/orders/<order_id>/status")
+@admin_required
+def admin_update_order_status(order_id):
+    new_status = request.form.get("order_status", "")
+    if new_status not in ORDER_STATUSES:
+        abort(400)
+
+    order_row = query_db(
+        """SELECT orders.*, users.email AS user_email, users.name AS user_name FROM orders
+           JOIN users ON users.id = orders.user_id WHERE orders.id = %s""",
+        (order_id,), fetchone=True,
+    )
+    if not order_row:
+        abort(404)
+
+    query_db("UPDATE orders SET order_status = %s WHERE id = %s", (new_status, order_id))
+    get_db().commit()
+
+    order = dict(order_row)
+    order["order_status"] = new_status
+    order["items"] = json.loads(order["items_json"])
+    send_order_status_email(order, order["user_name"], order["user_email"])
+
     return redirect(url_for("admin_orders"))
 
 
