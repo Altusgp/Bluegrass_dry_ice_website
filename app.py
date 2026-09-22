@@ -197,6 +197,14 @@ def send_otp_email(to_addr, code):
     )
 
 
+def get_admin_emails():
+    rows = query_db("SELECT email FROM users WHERE is_admin = 1", fetchall=True)
+    emails = {row["email"] for row in rows}
+    if ADMIN_ORDER_EMAIL:
+        emails.add(ADMIN_ORDER_EMAIL)
+    return emails
+
+
 def send_order_emails(order, customer_name, customer_email, customer_phone):
     order_history_url = url_for("order_history", _external=True)
     admin_orders_url = url_for("admin_orders", _external=True)
@@ -233,19 +241,16 @@ def send_order_emails(order, customer_name, customer_email, customer_phone):
         + (f"Notes: {order['notes']}\n" if order["notes"] else "")
         + f"\nAdmin panel: {admin_orders_url}"
     )
-    try:
-        send_email(
-            ADMIN_ORDER_EMAIL,
-            f"New order {order['id']} - {BUSINESS['name']}",
-            admin_text,
-            html=render_template(
-                "email/order_admin.html", order=order, biz=BUSINESS,
-                customer_name=customer_name, customer_email=customer_email, customer_phone=customer_phone,
-                admin_orders_url=admin_orders_url,
-            ),
-        )
-    except Exception:
-        pass
+    admin_html = render_template(
+        "email/order_admin.html", order=order, biz=BUSINESS,
+        customer_name=customer_name, customer_email=customer_email, customer_phone=customer_phone,
+        admin_orders_url=admin_orders_url,
+    )
+    for admin_email in get_admin_emails():
+        try:
+            send_email(admin_email, f"New order {order['id']} - {BUSINESS['name']}", admin_text, html=admin_html)
+        except Exception:
+            pass
 
 
 def send_order_status_email(order, customer_name, customer_email):
