@@ -227,6 +227,14 @@ table.price td:last-child{color:var(--muted)}
 .review-block dd{margin:0 0 12px}
 .review-block dd:last-child{margin-bottom:0}
 .notice.ok{background:#edfaf2;border-color:#bfe8d0;color:#1c6b42}
+.order-confirmed{text-align:center;padding:12px 4px}
+.order-confirmed-check{width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:#1b8a4c;color:#fff;
+  font-size:1.6rem;font-weight:800;display:grid;place-items:center}
+.order-confirmed h3{font-size:1.4rem;margin:0 0 6px}
+.order-confirmed .muted{margin:0 0 4px}
+.order-confirmed-id{font-size:1.3rem;font-weight:800;color:var(--navy);background:var(--blue-soft);
+  border-radius:10px;padding:12px 16px;margin:18px 0 6px}
+.order-confirmed .form-stack{margin-top:22px;text-align:left}
 
 /* ---------- pickup instructions ---------- */
 .pickup-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:26px;margin-top:30px;align-items:start}

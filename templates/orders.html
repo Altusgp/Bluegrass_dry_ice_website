@@ -20,7 +20,13 @@
         <div class="order-list">
           {% for order in orders %}
           <div class="order-row">
-            <div><strong>{{ order['id'] }}</strong><div class="small muted">{{ order['placed_at'] }} · {{ order['total_lbs'] }} lb{% if order['pickup_date'] %} · Pickup: {{ order['pickup_date'] }}{% endif %}</div></div>
+            <div>
+              <strong>{{ order['id'] }}</strong>
+              <div class="small muted">{{ order['placed_at'] }} · {{ order['total_lbs'] }} lb{% if order['pickup_date'] %} · Pickup: {{ order['pickup_date'] }}{% endif %}</div>
+              {% if order['order_status'] == 'cancelled' and order['cancel_reason'] %}
+              <div class="small muted" style="margin-top:4px">Reason: {{ order['cancel_reason'] }}</div>
+              {% endif %}
+            </div>
             <div style="text-align:right">
               <strong>${{ '%.2f'|format(order['total']) }}</strong>
               <div class="small muted">{{ order['payment_status'] }}</div>

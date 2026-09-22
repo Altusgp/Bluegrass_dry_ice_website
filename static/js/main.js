@@ -179,11 +179,7 @@ async function checkout() {
     }
 
     toast(data.message);
-    const notice = $('orderNotice');
-    notice.classList.add('ok');
-    notice.textContent =
-      `Reserved ${data.order.id} · ${data.order.total_lbs} lb · ` +
-      `$${data.order.total.toFixed(2)} (${data.order.payment === 'online' ? 'pay online' : 'pay at pickup'}).`;
+    showOrderConfirmed(data.order);
   } catch (err) {
     toast('Could not reach the server. Is the Flask app running?');
   } finally {
@@ -191,7 +187,25 @@ async function checkout() {
   }
 }
 
+function showOrderConfirmed(order) {
+  $('paymentForm').hidden = true;
+  $('orderConfirmedPanel').hidden = false;
+  $('confirmedOrderId').textContent = order.id;
+  $('confirmedOrderSummary').textContent =
+    `${order.total_lbs} lb · $${order.total.toFixed(2)} (${order.payment === 'online' ? 'pay online' : 'pay at pickup'}).`;
+}
+
+function resetOrderForm() {
+  qty.forEach((_, i) => { qty[i] = 0; $('qty' + i).textContent = 0; });
+  updateSummary();
+  $('paymentForm').hidden = false;
+  $('orderConfirmedPanel').hidden = true;
+  goToStep(1);
+  $('order').scrollIntoView({ behavior: 'smooth' });
+}
+
 $('checkoutBtn').addEventListener('click', checkout);
+$('placeAnotherOrder').addEventListener('click', resetOrderForm);
 
 /* ------------------------------------------------ estimator (POST to Flask) */
 async function calculateNeed() {

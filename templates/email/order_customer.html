@@ -75,7 +75,12 @@
               </tr>
             </table>
 
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7fbfe;border:1px solid #e3ebf3;border-radius:10px">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7fbfe;border:1px solid #e3ebf3;border-radius:10px;overflow:hidden">
+              {% if pickup_image_cid %}
+              <tr>
+                <td><img src="cid:{{ pickup_image_cid }}" alt="Pickup location and parking" width="536" style="display:block;width:100%;max-width:536px;height:auto"></td>
+              </tr>
+              {% endif %}
               <tr>
                 <td style="padding:16px">
                   <p style="margin:0 0 6px;font-size:13px;font-weight:800;color:#0d2a4d">Pickup location</p>

@@ -29,15 +29,26 @@
               <td>{{ o['placed_at'] }}</td>
               <td>{{ o['pickup_date'] or '—' }}</td>
               <td>${{ '%.2f'|format(o['total']) }}</td>
-              <td>{{ o['payment_status'] }}</td>
               <td>
-                <form method="post" action="{{ url_for('admin_update_order_status', order_id=o['id']) }}">
-                  <select name="order_status" class="status-select" onchange="this.form.submit()">
+                <form method="post" action="{{ url_for('admin_update_payment_status', order_id=o['id']) }}">
+                  <select name="payment_status" class="status-select" onchange="this.form.submit()">
+                    <option value="unpaid" {% if o['payment_status'] == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                    <option value="paid" {% if o['payment_status'] == 'paid' %}selected{% endif %}>Paid</option>
+                  </select>
+                </form>
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('admin_update_order_status', order_id=o['id']) }}" class="status-form">
+                  <select name="order_status" class="status-select" onchange="handleStatusChange(this)">
                     {% for key, s in statuses.items() %}
                     <option value="{{ key }}" {% if o['order_status'] == key %}selected{% endif %}>{{ s.label }}</option>
                     {% endfor %}
                   </select>
+                  <input type="hidden" name="reason" value="{{ o['cancel_reason'] or '' }}">
                 </form>
+                {% if o['order_status'] == 'cancelled' and o['cancel_reason'] %}
+                <div class="small muted" style="margin-top:4px;max-width:200px">{{ o['cancel_reason'] }}</div>
+                {% endif %}
               </td>
               <td>
                 <form method="post" action="{{ url_for('admin_delete_order', order_id=o['id']) }}" onsubmit="return confirm('Delete this order?')">
@@ -55,5 +66,21 @@
     </div>
   </div>
 </main>
+<script>
+  function handleStatusChange(select) {
+    const form = select.closest('form');
+    if (select.value === 'cancelled') {
+      const reason = window.prompt('Reason for cancellation (optional, sent to the customer):', '');
+      if (reason === null) {
+        // Admin backed out — revert the dropdown instead of submitting.
+        select.value = select.dataset.original || select.value;
+        return;
+      }
+      form.querySelector('input[name=reason]').value = reason;
+    }
+    form.submit();
+  }
+  document.querySelectorAll('.status-select').forEach((sel) => { sel.dataset.original = sel.value; });
+</script>
 </body>
 </html>

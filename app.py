@@ -6,6 +6,7 @@ Run locally:
     -> http://127.0.0.1:5000
 """
 
+import base64
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from email.message import EmailMessage
@@ -89,6 +90,22 @@ ORDER_STATUSES = {
 # Pounds of dry ice consumed per day, per use case, before the container multiplier.
 USE_RATES = {"ship": 8, "cooler": 6, "fog": 10, "freezer": 10}
 
+PICKUP_IMAGE_CID = "pickup-instructions"
+_pickup_image_cache = None
+
+
+def get_pickup_image_bytes():
+    global _pickup_image_cache
+    if _pickup_image_cache is None:
+        try:
+            path = os.path.join(app.static_folder, "images", "DIKYPickup_Location_Image.png")
+            with open(path, "rb") as f:
+                _pickup_image_cache = f.read()
+        except OSError:
+            _pickup_image_cache = b""
+    return _pickup_image_cache or None
+
+
 _graph_token_cache = {"token": None, "expires_at": 0}
 
 
@@ -113,32 +130,44 @@ def _get_graph_token():
     return _graph_token_cache["token"]
 
 
-def _send_via_graph(to_addr, subject, body, html=None):
+def _send_via_graph(to_addr, subject, body, html=None, inline_images=None):
     token = _get_graph_token()
     message_body = {"contentType": "HTML", "content": html} if html else {"contentType": "Text", "content": body}
+    message = {
+        "subject": subject,
+        "body": message_body,
+        "toRecipients": [{"emailAddress": {"address": to_addr}}],
+    }
+    if inline_images:
+        message["attachments"] = [
+            {
+                "@odata.type": "#microsoft.graph.fileAttachment",
+                "name": f"{cid}.png",
+                "contentType": "image/png",
+                "contentBytes": base64.b64encode(img_bytes).decode("ascii"),
+                "isInline": True,
+                "contentId": cid,
+            }
+            for cid, img_bytes in inline_images.items()
+        ]
     resp = requests.post(
         f"{GRAPH_API_BASE}/users/{GRAPH_SENDER}/sendMail",
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        json={
-            "message": {
-                "subject": subject,
-                "body": message_body,
-                "toRecipients": [{"emailAddress": {"address": to_addr}}],
-            },
-            "saveToSentItems": "false",
-        },
+        json={"message": message, "saveToSentItems": "false"},
         timeout=10,
     )
     resp.raise_for_status()
 
 
-def send_email(to_addr, subject, body, html=None):
+def send_email(to_addr, subject, body, html=None, inline_images=None):
     if EMAIL_BACKEND == "console":
         print(f"\n----- EMAIL (console backend) -----\nTo: {to_addr}\nSubject: {subject}\n\n{body}"
-              f"{'  [+ HTML version]' if html else ''}\n------------------------------------\n", flush=True)
+              f"{'  [+ HTML version]' if html else ''}"
+              f"{'  [+ ' + str(len(inline_images)) + ' inline image(s)]' if inline_images else ''}"
+              f"\n------------------------------------\n", flush=True)
         return
     if EMAIL_BACKEND == "graph":
-        _send_via_graph(to_addr, subject, body, html=html)
+        _send_via_graph(to_addr, subject, body, html=html, inline_images=inline_images)
         return
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -147,6 +176,10 @@ def send_email(to_addr, subject, body, html=None):
     msg.set_content(body)
     if html:
         msg.add_alternative(html, subtype="html")
+        if inline_images:
+            html_part = msg.get_payload()[-1]
+            for cid, img_bytes in inline_images.items():
+                html_part.add_related(img_bytes, "image", "png", cid=f"<{cid}>")
     smtp_class = smtplib.SMTP_SSL if SMTP_USE_SSL else smtplib.SMTP
     with smtp_class(SMTP_HOST, SMTP_PORT, timeout=10) as server:
         if not SMTP_USE_SSL:
@@ -176,6 +209,7 @@ def send_order_emails(order, customer_name, customer_email, customer_phone):
         + (f"Preferred pickup date: {order['pickup_date']}\n" if order["pickup_date"] else "")
         + f"\nPickup: {BUSINESS['street']}, {BUSINESS['city']}\nView your order: {order_history_url}"
     )
+    pickup_image = get_pickup_image_bytes()
     try:
         send_email(
             customer_email,
@@ -184,7 +218,9 @@ def send_order_emails(order, customer_name, customer_email, customer_phone):
             html=render_template(
                 "email/order_customer.html", order=order, biz=BUSINESS,
                 customer_name=customer_name, order_history_url=order_history_url,
+                pickup_image_cid=PICKUP_IMAGE_CID if pickup_image else None,
             ),
+            inline_images={PICKUP_IMAGE_CID: pickup_image} if pickup_image else None,
         )
     except Exception:
         pass
@@ -213,14 +249,27 @@ def send_order_emails(order, customer_name, customer_email, customer_phone):
 
 
 def send_order_status_email(order, customer_name, customer_email):
-    status = ORDER_STATUSES.get(order["order_status"])
-    if not status:
+    base_status = ORDER_STATUSES.get(order["order_status"])
+    if not base_status:
         return
+    status = dict(base_status)
+
+    if order["order_status"] == "cancelled":
+        reason = (order.get("cancel_reason") or "").strip()
+        message = "We're sorry, your order has been cancelled."
+        if reason:
+            message += f" Reason: {reason}"
+        if order.get("payment_status") == "paid":
+            message += " Since this order was already paid, a refund will be processed."
+        message += f" If you have any questions, please contact us at {BUSINESS['phone']} or {BUSINESS['email']}."
+        status["message"] = message
+
     order_history_url = url_for("order_history", _external=True)
     text = (
         f"Hi {customer_name},\n\nOrder {order['id']} status: {status['label']}\n\n{status['message']}\n\n"
         f"View your order: {order_history_url}"
     )
+    pickup_image = get_pickup_image_bytes() if order["order_status"] == "ready_for_pickup" else None
     try:
         send_email(
             customer_email,
@@ -229,7 +278,9 @@ def send_order_status_email(order, customer_name, customer_email):
             html=render_template(
                 "email/order_status.html", order=order, biz=BUSINESS, status=status,
                 customer_name=customer_name, order_history_url=order_history_url,
+                pickup_image_cid=PICKUP_IMAGE_CID if pickup_image else None,
             ),
+            inline_images={PICKUP_IMAGE_CID: pickup_image} if pickup_image else None,
         )
     except Exception:
         pass
@@ -352,6 +403,7 @@ def init_db():
                 pickup_date VARCHAR(20) NOT NULL DEFAULT '',
                 notes VARCHAR(500) NOT NULL DEFAULT '',
                 order_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+                cancel_reason VARCHAR(500) NOT NULL DEFAULT '',
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """)
@@ -361,6 +413,8 @@ def init_db():
             cursor.execute("ALTER TABLE orders ADD COLUMN notes VARCHAR(500) NOT NULL DEFAULT ''")
         if not column_exists(cursor, "orders", "order_status"):
             cursor.execute("ALTER TABLE orders ADD COLUMN order_status VARCHAR(30) NOT NULL DEFAULT 'pending'")
+        if not column_exists(cursor, "orders", "cancel_reason"):
+            cursor.execute("ALTER TABLE orders ADD COLUMN cancel_reason VARCHAR(500) NOT NULL DEFAULT ''")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS addresses (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -408,6 +462,7 @@ def init_db():
                 pickup_date TEXT NOT NULL DEFAULT '',
                 notes TEXT NOT NULL DEFAULT '',
                 order_status TEXT NOT NULL DEFAULT 'pending',
+                cancel_reason TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
             CREATE TABLE IF NOT EXISTS addresses (
@@ -440,6 +495,8 @@ def init_db():
             cursor.execute("ALTER TABLE orders ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
         if not column_exists(cursor, "orders", "order_status"):
             cursor.execute("ALTER TABLE orders ADD COLUMN order_status TEXT NOT NULL DEFAULT 'pending'")
+        if not column_exists(cursor, "orders", "cancel_reason"):
+            cursor.execute("ALTER TABLE orders ADD COLUMN cancel_reason TEXT NOT NULL DEFAULT ''")
     for field in ("subtotal", "tax_amount"):
         if not column_exists(cursor, "orders", field):
             field_type = "DECIMAL(10, 2)" if DB_BACKEND == "mysql" else "REAL"
@@ -1136,6 +1193,7 @@ def admin_delete_order(order_id):
 @admin_required
 def admin_update_order_status(order_id):
     new_status = request.form.get("order_status", "")
+    reason = request.form.get("reason", "").strip()[:500]
     if new_status not in ORDER_STATUSES:
         abort(400)
 
@@ -1147,13 +1205,37 @@ def admin_update_order_status(order_id):
     if not order_row:
         abort(404)
 
-    query_db("UPDATE orders SET order_status = %s WHERE id = %s", (new_status, order_id))
+    if new_status == "cancelled":
+        query_db(
+            "UPDATE orders SET order_status = %s, cancel_reason = %s WHERE id = %s",
+            (new_status, reason, order_id),
+        )
+    else:
+        query_db("UPDATE orders SET order_status = %s WHERE id = %s", (new_status, order_id))
     get_db().commit()
 
     order = dict(order_row)
     order["order_status"] = new_status
+    order["cancel_reason"] = reason if new_status == "cancelled" else order.get("cancel_reason", "")
     order["items"] = json.loads(order["items_json"])
     send_order_status_email(order, order["user_name"], order["user_email"])
+
+    return redirect(url_for("admin_orders"))
+
+
+@app.post("/admin/orders/<order_id>/payment-status")
+@admin_required
+def admin_update_payment_status(order_id):
+    new_status = request.form.get("payment_status", "")
+    if new_status not in ("unpaid", "paid"):
+        abort(400)
+
+    order_row = query_db("SELECT id FROM orders WHERE id = %s", (order_id,), fetchone=True)
+    if not order_row:
+        abort(404)
+
+    query_db("UPDATE orders SET payment_status = %s WHERE id = %s", (new_status, order_id))
+    get_db().commit()
 
     return redirect(url_for("admin_orders"))
 

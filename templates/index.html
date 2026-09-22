@@ -203,21 +203,35 @@
         </div>
 
         <div class="checkout-step" data-step="4" hidden>
-          <div class="step-title"><span class="num">4</span>Payment</div>
-          <div class="opt-grid" style="margin-bottom:14px">
-            <label class="opt"><input type="radio" name="pay" value="pickup" checked> Pay at pickup</label>
+          <div id="paymentForm">
+            <div class="step-title"><span class="num">4</span>Payment</div>
+            <div class="opt-grid" style="margin-bottom:14px">
+              <label class="opt"><input type="radio" name="pay" value="pickup" checked> Pay at pickup</label>
+            </div>
+            <div class="notice">Pay the full order total, including Kentucky sales tax, when you collect your order.</div>
+            <button class="btn primary block" id="checkoutBtn">Place order →</button>
+            <div class="checkout-nav" style="justify-content:flex-start;margin-top:12px">
+              <button class="btn ghost" type="button" data-back>← Back</button>
+            </div>
+            <div class="notice" id="orderNotice">
+              {% if current_user %}
+              Signed in as {{ current_user['email'] }}. Orders are saved to your account.
+              {% else %}
+              Sign in before placing an order. Payment is due at pickup.
+              {% endif %}
+            </div>
           </div>
-          <div class="notice">Pay the full order total, including Kentucky sales tax, when you collect your order.</div>
-          <button class="btn primary block" id="checkoutBtn">Place order →</button>
-          <div class="checkout-nav" style="justify-content:flex-start;margin-top:12px">
-            <button class="btn ghost" type="button" data-back>← Back</button>
-          </div>
-          <div class="notice" id="orderNotice">
-            {% if current_user %}
-            Signed in as {{ current_user['email'] }}. Orders are saved to your account.
-            {% else %}
-            Sign in before placing an order. Payment is due at pickup.
-            {% endif %}
+
+          <div id="orderConfirmedPanel" class="order-confirmed" hidden>
+            <div class="order-confirmed-check">✓</div>
+            <h3>Order placed!</h3>
+            <p class="muted">We've reserved your dry ice and emailed a confirmation to you.</p>
+            <div class="order-confirmed-id" id="confirmedOrderId"></div>
+            <p class="small muted" id="confirmedOrderSummary"></p>
+            <div class="form-stack">
+              <a class="btn primary block" href="{{ url_for('order_history') }}">View order history</a>
+              <button class="btn ghost block" type="button" id="placeAnotherOrder">Place another order</button>
+            </div>
           </div>
         </div>
       </div>
