@@ -7,6 +7,7 @@ Run locally:
 """
 
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from email.message import EmailMessage
 from functools import wraps
 import json
@@ -170,7 +171,7 @@ def send_order_emails(order, customer_name, customer_email, customer_phone):
     items_lines = "\n".join(f"  {i['qty']} x {i['name']} - ${i['line_total']}" for i in order["items"])
     customer_text = (
         f"Thanks, {customer_name}!\n\nOrder {order['id']} is reserved.\n\n{items_lines}\n"
-        f"  Container: {order['container']}\n  Total: ${order['total']:.2f}\n\n"
+        f"  Container: {order['container']}\n  Subtotal: ${order['subtotal']:.2f}\n  Kentucky sales tax (6%): ${order['tax_amount']:.2f}\n  Total: ${order['total']:.2f}\n\n"
         f"Payment: {'Pay online' if order['payment'] == 'online' else 'Pay at pickup'} ({order['payment_status']})\n"
         + (f"Preferred pickup date: {order['pickup_date']}\n" if order["pickup_date"] else "")
         + f"\nPickup: {BUSINESS['street']}, {BUSINESS['city']}\nView your order: {order_history_url}"
@@ -190,7 +191,7 @@ def send_order_emails(order, customer_name, customer_email, customer_phone):
 
     admin_text = (
         f"New order {order['id']} from {customer_name} ({customer_email}, {customer_phone}).\n\n{items_lines}\n"
-        f"  Container: {order['container']}\n  Total: ${order['total']:.2f}\n\n"
+        f"  Container: {order['container']}\n  Subtotal: ${order['subtotal']:.2f}\n  Kentucky sales tax (6%): ${order['tax_amount']:.2f}\n  Total: ${order['total']:.2f}\n\n"
         f"Payment: {'Pay online' if order['payment'] == 'online' else 'Pay at pickup'} ({order['payment_status']})\n"
         + (f"Preferred pickup date: {order['pickup_date']}\n" if order["pickup_date"] else "")
         + (f"Notes: {order['notes']}\n" if order["notes"] else "")
@@ -439,6 +440,10 @@ def init_db():
             cursor.execute("ALTER TABLE orders ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
         if not column_exists(cursor, "orders", "order_status"):
             cursor.execute("ALTER TABLE orders ADD COLUMN order_status TEXT NOT NULL DEFAULT 'pending'")
+    for field in ("subtotal", "tax_amount"):
+        if not column_exists(cursor, "orders", field):
+            field_type = "DECIMAL(10, 2)" if DB_BACKEND == "mysql" else "REAL"
+            cursor.execute(f"ALTER TABLE orders ADD COLUMN {field} {field_type} NOT NULL DEFAULT 0")
     db.commit()
 
 
@@ -585,7 +590,7 @@ def verify_otp():
 
         session.pop("pending_registration", None)
         session["user_id"] = cursor.lastrowid
-        return redirect(url_for("account"))
+        return redirect(session.pop("order_return", None) or url_for("account"))
 
     return render_template("verify_otp.html", email=pending["email"])
 
@@ -613,15 +618,20 @@ def resend_otp():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    destination = request.form.get("next") or request.args.get("next") or ""
+    if not destination.startswith("/") or destination.startswith("//") or "\\" in destination:
+        destination = ""
+    if destination == "/#order":
+        session["order_return"] = destination
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         user = query_db("SELECT * FROM users WHERE email = %s", (email,), fetchone=True)
         if user is None or not check_password_hash(user["password_hash"], request.form.get("password", "")):
-            return render_template("auth.html", mode="login", error="Email or password is incorrect.")
+            return render_template("auth.html", mode="login", next=destination, error="Email or password is incorrect.")
         session.clear()
         session["user_id"] = user["id"]
-        return redirect(request.form.get("next") or url_for("account"))
-    return render_template("auth.html", mode="login", next=request.args.get("next", ""))
+        return redirect(destination or url_for("account"))
+    return render_template("auth.html", mode="login", next=destination)
 
 
 @app.get("/logout")
@@ -890,7 +900,9 @@ def api_order():
         (c for c in CONTAINERS if str(c["price"]) == str(data.get("container", "0"))),
         CONTAINERS[0],
     )
-    payment = "online" if data.get("payment") == "online" else "pickup"
+    if data.get("payment", "pickup") != "pickup":
+        return jsonify(ok=False, error="Online payment is unavailable. Please choose Pay at pickup."), 400
+    payment = "pickup"
     pickup_date = str(data.get("pickup_date", ""))[:20]
     notes = str(data.get("notes", ""))[:500]
     billing = {
@@ -903,6 +915,8 @@ def api_order():
     if payment == "online" and not all(billing[key] for key in ("line1", "city", "state", "zip")):
         return jsonify(ok=False, error="Billing address is required for online payment."), 400
 
+    subtotal = Decimal(str(bag_total)) + Decimal(str(container["price"]))
+    tax_amount = (subtotal * Decimal("0.06")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     order_id = "BDI-" + uuid4().hex[:6].upper()
     order = {
         "id": order_id,
@@ -912,18 +926,20 @@ def api_order():
         "container": container["label"],
         "payment": payment,
         "payment_status": "unpaid",
-        "total": round(bag_total + container["price"], 2),
+        "subtotal": float(subtotal),
+        "tax_amount": float(tax_amount),
+        "total": float(subtotal + tax_amount),
         "pickup_date": pickup_date,
         "notes": notes,
     }
     query_db(
         """INSERT INTO orders
            (id, user_id, placed_at, items_json, total_lbs, container,
-            payment_method, payment_status, total, pickup_date, notes)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            payment_method, payment_status, total, pickup_date, notes, subtotal, tax_amount)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (order_id, session["user_id"], order["placed_at"], json.dumps(items),
          total_lbs, order["container"], payment, order["payment_status"], order["total"],
-         pickup_date, notes),
+         pickup_date, notes, order["subtotal"], order["tax_amount"]),
     )
     if data.get("save_billing") and all(billing[key] for key in ("line1", "city", "state", "zip")):
         query_db(
@@ -942,27 +958,6 @@ def api_order():
     )
 
     checkout_url = None
-    if payment == "online" and STRIPE_SECRET_KEY:
-        try:
-            checkout_session = stripe.checkout.Session.create(
-                mode="payment",
-                payment_method_types=["card"],
-                customer_email=data.get("email") or None,
-                line_items=[{
-                    "price_data": {
-                        "currency": "usd",
-                        "product_data": {"name": f"{BUSINESS['name']} order {order_id}"},
-                        "unit_amount": int(round(order["total"] * 100)),
-                    },
-                    "quantity": 1,
-                }],
-                success_url=url_for("order_confirmation", order_id=order_id, _external=True) + "?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url=url_for("home", _external=True) + "#order",
-                metadata={"order_id": order_id, "user_id": str(session["user_id"])},
-            )
-            checkout_url = checkout_session.url
-        except Exception:
-            pass
 
     return jsonify(
         ok=True,
@@ -1013,6 +1008,8 @@ def api_orders():
             "payment": row["payment_method"],
             "payment_status": row["payment_status"],
             "total": row["total"],
+            "subtotal": row["subtotal"],
+            "tax_amount": row["tax_amount"],
         })
     return jsonify(count=len(orders), orders=orders)
 

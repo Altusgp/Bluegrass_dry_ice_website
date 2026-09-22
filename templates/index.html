@@ -164,7 +164,7 @@
           </div>
 
           <div class="checkout-nav" style="justify-content:flex-end">
-            <button class="btn primary" type="button" data-next>Continue to pickup details →</button>
+            <button class="btn primary" type="button" data-next>{{ 'Continue to pickup details' if current_user else 'Sign in to continue' }} →</button>
           </div>
         </div>
 
@@ -205,26 +205,9 @@
         <div class="checkout-step" data-step="4" hidden>
           <div class="step-title"><span class="num">4</span>Payment</div>
           <div class="opt-grid" style="margin-bottom:14px">
-            <label class="opt"><input type="radio" name="pay" value="online" checked> Pay online</label>
-            <label class="opt"><input type="radio" name="pay" value="pickup"> Pay at pickup</label>
+            <label class="opt"><input type="radio" name="pay" value="pickup" checked> Pay at pickup</label>
           </div>
-          <div class="payment-placeholder">
-            <b>Card payment</b>
-            <p>Secure card entry will open in Stripe Checkout when online payments are connected. Card numbers are never stored by this website.</p>
-          </div>
-          <div class="billing-fields">
-            <div class="step-title"><span class="num">B</span>Billing address</div>
-            <div class="form-stack">
-              <label>Address line 1<input id="billingLine1" autocomplete="billing address-line1"></label>
-              <label>Address line 2 (optional)<input id="billingLine2" autocomplete="billing address-line2"></label>
-              <div class="form-row">
-                <label>City<input id="billingCity" autocomplete="billing address-level2"></label>
-                <label>State<input id="billingState" maxlength="2" autocomplete="billing address-level1"></label>
-                <label>ZIP code<input id="billingZip" inputmode="numeric" autocomplete="billing postal-code"></label>
-              </div>
-              <label class="check-inline"><input type="checkbox" id="saveBilling"> Save this billing address to my account</label>
-            </div>
-          </div>
+          <div class="notice">Pay the full order total, including Kentucky sales tax, when you collect your order.</div>
           <button class="btn primary block" id="checkoutBtn">Place order →</button>
           <div class="checkout-nav" style="justify-content:flex-start;margin-top:12px">
             <button class="btn ghost" type="button" data-back>← Back</button>
@@ -233,7 +216,7 @@
             {% if current_user %}
             Signed in as {{ current_user['email'] }}. Orders are saved to your account.
             {% else %}
-            Sign in before placing an order. Stripe payments will be connected later.
+            Sign in before placing an order. Payment is due at pickup.
             {% endif %}
           </div>
         </div>
@@ -243,6 +226,7 @@
         <div class="step-title">Your order</div>
         <div id="summaryItems"><p class="muted small" style="margin:0 0 8px">Choose a bag size to begin.</p></div>
         <div class="sum-line"><span>Container</span><strong id="containerTotal">$0</strong></div>
+        <div class="sum-line"><span>Kentucky sales tax (6%)</span><strong id="taxTotal">$0.00</strong></div>
         <div class="sum-line total"><span>Total</span><span id="grandTotal">$0.00</span></div>
       </aside>
     </div>
@@ -457,10 +441,20 @@
   </div>
 </footer>
 
+<dialog id="orderSignInDialog" aria-labelledby="orderSignInTitle" aria-describedby="orderSignInDescription">
+  <h2 id="orderSignInTitle">Please sign in to place an order</h2>
+  <p id="orderSignInDescription">Sign in or create an account before adding items to your cart.</p>
+  <div class="checkout-nav">
+    <button type="button" class="btn ghost" id="orderSignInCancel">Keep browsing</button>
+    <button type="button" class="btn primary" id="orderSignInButton">Sign in / Create account</button>
+  </div>
+</dialog>
+
 <div class="toast" id="toast">Order updated.</div>
 
 <script>
   window.BAGS = {{ bags | tojson }};
+  window.SIGNED_IN = {{ (current_user is not none) | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

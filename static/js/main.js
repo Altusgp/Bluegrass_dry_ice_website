@@ -19,9 +19,14 @@ function toast(msg) {
 
 /* ------------------------------------------------ order builder */
 function changeQty(i, step) {
+  if (step > 0 && !window.SIGNED_IN) {
+    $('orderSignInDialog').showModal();
+    return false;
+  }
   qty[i] = Math.max(0, qty[i] + step);
   $('qty' + i).textContent = qty[i];
   updateSummary();
+  return true;
 }
 
 function selectedContainer() {
@@ -43,7 +48,10 @@ function updateSummary() {
   const container = selectedContainer();
 
   $('containerTotal').textContent = '$' + container;
-  $('grandTotal').textContent = '$' + (bagTotal + container).toFixed(2);
+  const subtotalCents = Math.round((bagTotal + container) * 100);
+  const taxCents = Math.round(subtotalCents * 6 / 100);
+  $('taxTotal').textContent = '$' + (taxCents / 100).toFixed(2);
+  $('grandTotal').textContent = '$' + ((subtotalCents + taxCents) / 100).toFixed(2);
 }
 
 document.querySelectorAll('[data-qty]').forEach((btn) => {
@@ -63,7 +71,15 @@ function escapeHtml(str) {
   }[c]));
 }
 
+function signInForOrder() {
+  try {
+    sessionStorage.setItem('pickupCart', JSON.stringify({qty, container: selectedContainer(), savedAt: Date.now()}));
+  } catch (_) { /* Checkout can still continue if browser storage is unavailable. */ }
+  window.location.href = '/login?next=' + encodeURIComponent('/#order');
+}
+
 function goToStep(n) {
+  if (n > 1 && !window.SIGNED_IN) { signInForOrder(); return; }
   currentStep = n;
   document.querySelectorAll('.checkout-step').forEach((el) => {
     el.hidden = Number(el.dataset.step) !== n;
@@ -108,13 +124,6 @@ document.querySelectorAll('[data-next]').forEach((btn) => {
         return;
       }
     }
-    if (currentStep === 3 && document.querySelector('input[name=pay]:checked')?.value === 'online') {
-      if (!$('billingLine1').value || !$('billingCity').value || !$('billingState').value || !$('billingZip').value) {
-        toast('Please enter your billing address for online payment.');
-        goToStep(4);
-        return;
-      }
-    }
     goToStep(currentStep + 1);
   });
 });
@@ -125,14 +134,14 @@ document.querySelectorAll('[data-back]').forEach((btn) => {
 
 /* ------------------------------------------------ checkout (POST to Flask) */
 async function checkout() {
+  if (!window.SIGNED_IN) { signInForOrder(); return; }
   const items = {};
   qty.forEach((count, i) => { if (count) items[i] = count; });
 
-  const payEl = document.querySelector('input[name=pay]:checked');
   const payload = {
     items,
     container: selectedContainer(),
-    payment: payEl ? payEl.value : 'online',
+    payment: 'pickup',
     age: $('age').checked,
     airtight: $('airtight').checked,
     safety: $('safetyCheck').checked,
@@ -141,12 +150,7 @@ async function checkout() {
     phone: $('ckPhone').value,
     pickup_date: $('ckDate').value,
     notes: $('ckNotes').value,
-    billing_line1: $('billingLine1').value,
-    billing_line2: $('billingLine2').value,
-    billing_city: $('billingCity').value,
-    billing_state: $('billingState').value,
-    billing_zip: $('billingZip').value,
-    save_billing: $('saveBilling').checked
+
   };
 
   const btn = $('checkoutBtn');
@@ -162,7 +166,7 @@ async function checkout() {
 
     if (!res.ok || !data.ok) {
       if (res.status === 401) {
-        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname + '#order');
+        signInForOrder();
         return;
       }
       toast(data.error || 'Something went wrong. Please try again.');
@@ -217,7 +221,7 @@ async function calculateNeed() {
 }
 
 function orderRecommendation() {
-  changeQty(recommendedIndex, 1);
+  if (!changeQty(recommendedIndex, 1)) return;
   goToStep(1);
   $('order').scrollIntoView({ behavior: 'smooth' });
   toast(BAGS[recommendedIndex].name + ' added to your order.');
@@ -230,6 +234,23 @@ $('addRecBtn').addEventListener('click', orderRecommendation);
 document.querySelectorAll('.faq-q').forEach((q) =>
   q.addEventListener('click', () => q.parentElement.classList.toggle('open')));
 
+$('orderSignInButton').addEventListener('click', signInForOrder);
+$('orderSignInCancel').addEventListener('click', () => $('orderSignInDialog').close());
+
 /* ------------------------------------------------ init */
+try {
+  const saved = JSON.parse(sessionStorage.getItem('pickupCart') || 'null');
+  if (saved && Date.now() - saved.savedAt < 3600000 && Array.isArray(saved.qty)) {
+    saved.qty.forEach((count, i) => {
+      if (i < qty.length && Number.isInteger(count) && count >= 0) {
+        qty[i] = count;
+        $('qty' + i).textContent = count;
+      }
+    });
+    document.querySelectorAll('input[name=container]').forEach(el => { el.checked = Number(el.value) === saved.container; });
+    if (window.SIGNED_IN) goToStep(qty.some(count => count > 0) ? 2 : 1);
+  }
+  sessionStorage.removeItem('pickupCart');
+} catch (_) { /* Ignore unavailable storage or invalid drafts. */ }
 calculateNeed();
 updateSummary();
