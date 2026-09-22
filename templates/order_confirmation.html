@@ -20,6 +20,10 @@
        complete, your order is still on file as unpaid — you can pay at pickup.</p>
     {% endif %}
     <div class="review-block" style="margin-top:20px">
+      {% if order['tax_amount'] %}
+      <dt>Subtotal</dt><dd>${{ '%.2f'|format(order['subtotal']) }}</dd>
+      <dt>Kentucky sales tax (6%)</dt><dd>${{ '%.2f'|format(order['tax_amount']) }}</dd>
+      {% endif %}
       <dt>Total</dt><dd>${{ '%.2f'|format(order['total']) }}</dd>
       <dt>Status</dt><dd>{{ order['payment_status'] }}</dd>
       {% if order['pickup_date'] %}<dt>Preferred pickup date</dt><dd>{{ order['pickup_date'] }}</dd>{% endif %}

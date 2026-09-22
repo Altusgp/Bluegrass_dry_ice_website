@@ -111,6 +111,14 @@ p{margin:0 0 16px}
 .status-badge.picked_up{background:#e3f7e9;color:#1b8a4c}
 .status-badge.cancelled{background:var(--rose-bg);color:var(--rose-ink)}
 
+#orderSignInDialog{border:0;border-radius:var(--r);padding:30px;max-width:380px;width:calc(100% - 40px);
+  box-shadow:var(--shadow);background:#fff}
+#orderSignInDialog::backdrop{background:rgba(10,32,60,.55)}
+#orderSignInDialog h2{font-size:1.3rem;margin:0 0 10px}
+#orderSignInDialog p{color:var(--muted);font-size:.92rem;margin:0 0 22px}
+#orderSignInDialog .checkout-nav{margin:0;flex-direction:column-reverse;gap:10px}
+#orderSignInDialog .btn{width:100%}
+
 /* ---------- header ---------- */
 .header{position:sticky;top:0;z-index:80;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line)}
@@ -337,3 +345,8 @@ table.price td:last-child{color:var(--muted)}
   .form-row{grid-template-columns:1fr}
   .brand small{display:none}
 }
+
+#orderSignInDialog{border:1px solid #dce6f2;border-radius:18px;padding:28px;max-width:480px;width:calc(100% - 40px);color:#132b50;box-sizing:border-box}
+#orderSignInDialog::backdrop{background:rgba(15,23,42,.5)}
+#orderSignInDialog h2{font-size:1.4rem;margin:0 0 12px}
+#orderSignInDialog .checkout-nav{flex-wrap:wrap;gap:12px;margin-top:24px}
