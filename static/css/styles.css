@@ -71,17 +71,13 @@ p{margin:0 0 16px}
 /* ---------- hero ---------- */
 .hero{position:relative;overflow:hidden;color:#fff;padding:104px 0 96px;
   background:
-   radial-gradient(900px 420px at 78% 18%,rgba(88,168,236,.34),transparent 62%),
-   radial-gradient(700px 500px at 12% 92%,rgba(19,86,152,.55),transparent 65%),
-   linear-gradient(125deg,#08203c 0%,#0c3260 52%,#12507f 100%)}
-.hero::before{content:"";position:absolute;inset:0;opacity:.35;
-  background:repeating-linear-gradient(115deg,rgba(255,255,255,.05) 0 2px,transparent 2px 9px)}
-.hero::after{content:"";position:absolute;width:560px;height:560px;right:-140px;top:-190px;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,255,255,.16),transparent 68%);filter:blur(6px)}
+   linear-gradient(90deg,#022e71 0%,rgba(2,46,113,.82) 38%,rgba(2,46,113,0) 72%),
+   url('../images/hero-background.png') center/cover no-repeat,
+   #022e71}
 .hero .wrap{position:relative;z-index:2}
 .hero-inner{max-width:640px}
 .hero .eyebrow{color:#8ecdff}
-.hero h1{color:#fff;margin-bottom:20px}
+.hero h1{color:#fff;margin-bottom:20px;font-size:clamp(1.9rem,3.2vw,2.85rem)}
 .hero p{color:#cddff0;max-width:560px}
 .hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px;align-items:center}
 .status{display:inline-flex;align-items:center;gap:9px;background:rgba(255,255,255,.1);
@@ -153,13 +149,9 @@ table.price td:last-child{color:var(--muted)}
 /* ---------- pickup instructions ---------- */
 .pickup-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:26px;margin-top:30px;align-items:start}
 .sign{position:relative;min-height:320px;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);
-  background:
-    linear-gradient(180deg,rgba(8,32,60,.05),rgba(8,32,60,.35)),
-    linear-gradient(150deg,#dceaf6 0%,#b9d3e8 45%,#8fb2cd 100%);
-  display:grid;place-items:center}
-.sign::before{content:"";position:absolute;left:0;right:0;bottom:0;height:44%;
-  background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(10,31,60,.5))}
-.sign-plate{position:relative;z-index:2;background:#fff;border-radius:12px;padding:18px 34px;
+  background:url('../images/DIKYPickup_Location_Image.png') center/cover no-repeat;
+  display:grid;place-items:end start}
+.sign-plate{position:relative;z-index:2;margin:18px;background:#fff;border-radius:12px;padding:14px 22px;
   box-shadow:0 16px 40px rgba(8,32,60,.28);font-weight:800;color:var(--navy);letter-spacing:.08em;
   font-size:.9rem;text-transform:uppercase;display:flex;align-items:center;gap:10px}
 .steps{display:grid;gap:16px}

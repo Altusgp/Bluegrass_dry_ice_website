@@ -34,12 +34,12 @@
   <div class="wrap">
     <div class="hero-inner">
       <div class="eyebrow">Same-day local pickup</div>
-      <h1>Dry Ice Pellets in Nicholasville / Lexington — Pick Up Today.</h1>
-      <p>Dry ice with fast local fulfillment. Available at {{ biz.street }}, {{ biz.city }}. Open Monday–Friday
-         from 9 AM to 5 PM. Order online and we'll have it ready when you arrive.</p>
+      <h1>Dry Ice Pellets in<br>Nicholasville &amp; Lexington<br>Order Now — Pick-Up Today.</h1>
+      <p>Dry ice pellets with fast local fulfillment. Available at {{ biz.street }}, {{ biz.city }}. Open
+         Monday–Friday from 9 AM to 5 PM. Call {{ biz.phone }} or order online.</p>
       <div class="hero-actions">
-        <span class="status"><span class="dot"></span> Open now · In stock · Ready to fill</span>
-        <a class="btn primary" href="#order">Order for pickup →</a>
+        <a class="btn primary" href="{{ biz.phone_href }}">Call to Order →</a>
+        <a class="btn ghost" href="#order">Order Online →</a>
       </div>
     </div>
   </div>
@@ -190,8 +190,6 @@
         </div>
 
         <button class="btn primary block" id="checkoutBtn">Continue to Checkout →</button>
-        <div class="notice" id="orderNotice">Orders are validated by the Flask backend. Connect Stripe or Square
-          for live payments and your SMS/email provider for automated confirmations.</div>
       </aside>
     </div>
   </div>
@@ -400,7 +398,7 @@
     </div>
     <div class="legal">
       <span>© {{ year }} {{ biz.name }}. All rights reserved.</span>
-      <span>Front-end prototype — confirm hours, ZIP, and payment services before launch.</span>
+    
     </div>
   </div>
 </footer>

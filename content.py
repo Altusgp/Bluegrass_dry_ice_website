@@ -9,7 +9,7 @@ BUSINESS = {
     "email": "orders@bluegrassdryice.com",
     "street": "3004 Park Central Ave, Suite B",
     "city": "Nicholasville, KY 40356",
-    "hours": ["Mon–Fri: 9:00 AM–5:00 PM", "Saturday: 10:00 AM–2:00 PM", "Sunday: closed"],
+    "hours": ["Mon–Fri: 9:00 AM–5:00 PM", "Saturday: closed", "Sunday: closed"],
     "map_query": "3004+Park+Central+Ave,+Nicholasville,+KY+40356",
 }
 
@@ -33,21 +33,21 @@ CONTAINERS = [
 
 # image = file under static/images/. A missing file falls back to the gradient.
 USE_CASES = [
-    {"title": "Food & Beverage", "image": "food-beverage.jpg", "fallback": "#f3d9b8,#c98f4e",
+    {"title": "Food & Beverage", "image": "DIKY_food_and_beverage_image.png", "fallback": "#f3d9b8,#c98f4e",
      "text": "Keep food frozen, support food processing, and handle specialty beverage applications."},
-    {"title": "Shipping & Transport", "image": "shipping-transport.jpg", "fallback": "#cfe0f2,#7f9fc4",
+    {"title": "Shipping & Transport", "image": "DIKY_shipping_and_transport_image.jpg", "fallback": "#cfe0f2,#7f9fc4",
      "text": "Maintain colder conditions for temperature-sensitive products while they are packed or in transit."},
-    {"title": "Emergency Cooling", "image": "emergency-cooling.jpg", "fallback": "#f6e0c5,#d99a5c",
+    {"title": "Emergency Cooling", "image": "DIKY_Emergency_cooling_image.png", "fallback": "#f6e0c5,#d99a5c",
      "text": "Get temporary cold support when the power goes out or refrigeration equipment stops working."},
-    {"title": "Camping, Hunting & Outdoors", "image": "camping-outdoors.jpg", "fallback": "#d7e7cf,#7c9d72",
+    {"title": "Camping, Hunting & Outdoors", "image": "DIKY_Camping_Image.png", "fallback": "#d7e7cf,#7c9d72",
      "text": "Keep coolers colder for longer on camping, hunting, fishing, boating, and extended outdoor trips."},
-    {"title": "Events & Special Effects", "image": "events-effects.jpg", "fallback": "#e0d4f2,#8d73bd",
+    {"title": "Events & Special Effects", "image": "DIKY_Events_specialfx_image.jpg", "fallback": "#e0d4f2,#8d73bd",
      "text": "Create dramatic low-lying fog and memorable visual effects for parties, displays, and productions."},
-    {"title": "Science, Labs & Education", "image": "science-labs.jpg", "fallback": "#cfe9ec,#6ea6ad",
+    {"title": "Science, Labs & Education", "image": "DIKY_Science_Lab_Image.jpeg", "fallback": "#cfe9ec,#6ea6ad",
      "text": "Useful for demonstrations, research workflows, sample cooling, and hands-on science applications."},
-    {"title": "Industrial & Maintenance", "image": "industrial-maintenance.jpg", "fallback": "#dcdfe4,#8a919c",
+    {"title": "Industrial & Maintenance", "image": "DIKY_industrial_maintenance_image.png", "fallback": "#dcdfe4,#8a919c",
      "text": "Support specialty cleaning, manufacturing, fitting, cooling, and maintenance processes."},
-    {"title": "Agriculture & Specialty Uses", "image": "agriculture-specialty.jpg", "fallback": "#dcebc8,#8aa85f",
+    {"title": "Agriculture & Specialty Uses", "image": "DIKY_Agriculture_Image.png", "fallback": "#dcebc8,#8aa85f",
      "text": "Flexible pelletized dry ice for agricultural, plant-handling, production, and specialty commercial needs."},
 ]
 
