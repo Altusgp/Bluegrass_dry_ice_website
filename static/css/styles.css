@@ -140,7 +140,7 @@ p{margin:0 0 16px}
 .hero{position:relative;overflow:hidden;color:#fff;padding:104px 0 96px;
   background:
    linear-gradient(90deg,#022e71 0%,rgba(2,46,113,.82) 38%,rgba(2,46,113,0) 72%),
-   url('../images/hero-background.png') center/cover no-repeat,
+   url('../images/hero-background.jpg') center/cover no-repeat,
    #022e71}
 .hero .wrap{position:relative;z-index:2}
 .hero-inner{max-width:640px}
@@ -241,7 +241,7 @@ table.price td:last-child{color:var(--muted)}
 /* ---------- pickup instructions ---------- */
 .pickup-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:26px;margin-top:30px;align-items:start}
 .sign{position:relative;min-height:320px;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);
-  background:url('../images/DIKYPickup_Location_Image.png') center/cover no-repeat;
+  background:url('../images/DIKYPickup_Location_Image.jpg') center/cover no-repeat;
   display:grid;place-items:end start}
 .sign-plate{position:relative;z-index:2;margin:18px;background:#fff;border-radius:12px;padding:14px 22px;
   box-shadow:0 16px 40px rgba(8,32,60,.28);font-weight:800;color:var(--navy);letter-spacing:.08em;
