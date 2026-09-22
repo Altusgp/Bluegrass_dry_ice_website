@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Account</div>
+    <h1>My Account</h1>
+    <div class="account-grid">
+      <div>{% include '_account_nav.html' with context %}</div>
+      <div class="account-card account-content">
+        <p>Hello <b>{{ current_user['name'] }}</b> (not {{ current_user['name'] }}? <a href="{{ url_for('logout') }}">Log out</a>)</p>
+        <p>Email: <b>{{ current_user['email'] }}</b></p>
+        <p>From your account dashboard you can view your <a href="{{ url_for('order_history') }}">recent orders</a>,
+           manage your <a href="{{ url_for('addresses') }}">shipping and billing addresses</a>, and edit your
+           <a href="{{ url_for('account_details') }}">password and account details</a>.</p>
+        <p><a class="btn primary" href="{{ url_for('home') }}#order">Place a pickup order</a></p>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

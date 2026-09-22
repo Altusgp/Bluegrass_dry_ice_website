@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account Details | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Account</div>
+    <h1>My Account</h1>
+    <div class="account-grid">
+      <div>{% include '_account_nav.html' with context %}</div>
+      <div class="account-card account-content">
+        <h2 style="margin-top:0">Account details</h2>
+        {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+        {% if success %}<p class="muted" style="color:#1b8a4c;font-weight:700">{{ success }}</p>{% endif %}
+        <form class="form-stack" method="post">
+          <label>Name<input name="name" value="{{ current_user['name'] }}" required></label>
+          <label>Email<input type="email" name="email" value="{{ current_user['email'] }}" required></label>
+          <label>Phone<input name="phone" value="{{ current_user['phone'] }}" required></label>
+          <hr style="border:0;border-top:1px solid var(--line);margin:8px 0">
+          <p class="small muted" style="margin:0">Leave the password fields blank to keep your current password.</p>
+          <label>New password<input type="password" name="new_password" autocomplete="new-password" minlength="8"></label>
+          <label>Confirm new password<input type="password" name="confirm_password" autocomplete="new-password" minlength="8"></label>
+          <button class="btn primary block" type="submit">Save changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Addresses | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Admin</div>
+    <h1>Admin panel</h1>
+    <div class="account-grid">
+      <div>{% include '_admin_nav.html' %}</div>
+      <div class="account-card account-content" style="overflow-x:auto">
+        <h2 style="margin-top:0">Addresses ({{ addresses|length }})</h2>
+        {% if addresses %}
+        <table class="admin-table">
+          <thead>
+            <tr><th>Customer</th><th>Label</th><th>Address</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for a in addresses %}
+            <tr>
+              <td>{{ a['user_email'] }}</td>
+              <td>{{ a['label'] }}</td>
+              <td>{{ a['line1'] }}{% if a['line2'] %}, {{ a['line2'] }}{% endif %}, {{ a['city'] }}, {{ a['state'] }} {{ a['zip'] }}</td>
+              <td>
+                <form method="post" action="{{ url_for('admin_delete_address', address_id=a['id']) }}" onsubmit="return confirm('Delete this address?')">
+                  <button class="btn danger small" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="muted">No saved addresses yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Orders | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Admin</div>
+    <h1>Admin panel</h1>
+    <div class="account-grid">
+      <div>{% include '_admin_nav.html' %}</div>
+      <div class="account-card account-content" style="overflow-x:auto">
+        <h2 style="margin-top:0">Orders ({{ orders|length }})</h2>
+        {% if orders %}
+        <table class="admin-table">
+          <thead>
+            <tr><th>Order</th><th>Customer</th><th>Placed</th><th>Pickup date</th><th>Total</th><th>Payment</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td>{{ o['id'] }}</td>
+              <td>{{ o['user_email'] }}</td>
+              <td>{{ o['placed_at'] }}</td>
+              <td>{{ o['pickup_date'] or '—' }}</td>
+              <td>${{ '%.2f'|format(o['total']) }}</td>
+              <td>{{ o['payment_status'] }}</td>
+              <td>
+                <form method="post" action="{{ url_for('admin_update_order_status', order_id=o['id']) }}">
+                  <select name="order_status" class="status-select" onchange="this.form.submit()">
+                    {% for key, s in statuses.items() %}
+                    <option value="{{ key }}" {% if o['order_status'] == key %}selected{% endif %}>{{ s.label }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('admin_delete_order', order_id=o['id']) }}" onsubmit="return confirm('Delete this order?')">
+                  <button class="btn danger small" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="muted">No orders yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

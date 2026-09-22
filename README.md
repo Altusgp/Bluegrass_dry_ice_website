@@ -11,6 +11,11 @@ python app.py
 
 Then open http://127.0.0.1:5000
 
+Local development uses SQLite automatically and creates `bluegrass.db` in the project folder.
+For a MySQL deployment, set `DB_BACKEND=mysql` and provide `DB_HOST`, `DB_PORT`, `DB_USER`,
+`DB_PASSWORD`, and `DB_NAME` in `.env`. The MySQL account must already exist and have
+permission to create and update the `dryice` database tables.
+
 ## Layout
 
 ```

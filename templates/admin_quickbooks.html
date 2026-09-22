@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · QuickBooks | Bluegrass Dry Ice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+{% include '_header.html' %}
+<main class="account-shell">
+  <div class="wrap">
+    <div class="eyebrow">Admin</div>
+    <h1>Admin panel</h1>
+    <div class="account-grid">
+      <div>{% include '_admin_nav.html' %}</div>
+      <div class="account-card account-content">
+        <h2 style="margin-top:0">QuickBooks Payments</h2>
+
+        {% if not configured %}
+        <div class="payment-placeholder">
+          <b>Not configured yet</b>
+          <p>QB_CLIENT_ID, QB_CLIENT_SECRET, and QB_REDIRECT_URI need to be set in the server's .env file before
+             connecting.</p>
+        </div>
+        {% elif token %}
+        <p><span class="badge admin">Connected</span></p>
+        <p class="muted">Realm (company) ID: <b>{{ token['realm_id'] }}</b></p>
+        <p class="muted">Refresh authorization expires: {{ token['refresh_expires_at'] }} — QuickBooks requires
+           reconnecting periodically (refresh tokens don't last forever). If charges start failing with an auth
+           error, reconnect here.</p>
+        <form method="post" action="{{ url_for('qb_disconnect') }}" onsubmit="return confirm('Disconnect QuickBooks? Online card payments will stop working until reconnected.')" style="margin-top:16px">
+          <button class="btn danger" type="submit">Disconnect</button>
+        </form>
+        {% else %}
+        <p class="muted">Not connected yet. Click below and sign in to the Altus GP QuickBooks company to authorize
+           card payments for this site.</p>
+        <a class="btn primary" href="{{ url_for('qb_connect') }}">Connect to QuickBooks</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>
