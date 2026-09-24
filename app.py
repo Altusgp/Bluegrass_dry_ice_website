@@ -1268,5 +1268,5 @@ if __name__ == "__main__":
     app.run(
         host=os.environ.get("APP_HOST", "127.0.0.1"),
         port=int(os.environ.get("APP_PORT", "5005")),
-        debug=False,
+        debug=True,
     )

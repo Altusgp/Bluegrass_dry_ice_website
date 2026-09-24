@@ -137,15 +137,19 @@ p{margin:0 0 16px}
 .icon-btn:hover{background:#dfeafb;color:var(--blue)}
 
 /* ---------- hero ---------- */
-.hero{position:relative;overflow:hidden;color:#fff;padding:104px 0 96px;
+/* Height is fixed at ~625px on desktop so the hero reads as a full band under the
+   navbar. The photo is anchored right so the ice bucket stays on the right edge,
+   and the overlay is a left-to-right fade: opaque enough behind the text to keep
+   it legible, fully clear past ~78% so the ice stays bright and sharp. */
+.hero{position:relative;overflow:hidden;color:#fff;padding:64px 0;min-height:700px;display:flex;align-items:center;
   background:
-   linear-gradient(90deg,#022e71 0%,rgba(2,46,113,.82) 38%,rgba(2,46,113,0) 72%),
-   url('../images/hero-background.jpg') center/cover no-repeat,
+   linear-gradient(90deg,rgba(2,40,100,.94) 0%,rgba(2,44,108,.86) 34%,rgba(2,46,113,.45) 60%,rgba(2,46,113,0) 78%),
+   url('../images/hero-background.jpg') right center/cover no-repeat,
    #022e71}
-.hero .wrap{position:relative;z-index:2}
-.hero-inner{max-width:640px}
+.hero .wrap{position:relative;z-index:2;width:100%}
+.hero-inner{width:min(660px,58%);margin-left:100px}
 .hero .eyebrow{color:#8ecdff}
-.hero h1{color:#fff;margin-bottom:20px;font-size:clamp(1.9rem,3.2vw,2.85rem)}
+.hero h1{color:#fff;margin-bottom:22px;font-size:clamp(2.1rem,4vw,3.5rem);line-height:1.06}
 .hero p{color:#cddff0;max-width:560px}
 .hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px;align-items:center}
 .status{display:inline-flex;align-items:center;gap:9px;background:rgba(255,255,255,.1);
@@ -271,9 +275,10 @@ table.price td:last-child{color:var(--muted)}
 .use-card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;
   box-shadow:var(--shadow-sm);display:flex;flex-direction:column;transition:.18s ease}
 .use-card:hover{transform:translateY(-4px);box-shadow:0 20px 42px rgba(10,42,80,.14);border-color:#bcd8ef}
-/* Drop real photos into static/images/ using the filenames in content.py.
-   Until a file exists the gradient underneath shows instead. */
-.use-media{height:158px;background-size:cover;background-position:center}
+/* Photos live in static/images/ under the filenames in content.py.
+   The photo is the top background layer; the gradient below it shows only
+   when the file is missing or still loading. */
+.use-media{height:186px;background-size:cover;background-position:center;background-repeat:no-repeat}
 .use-body{padding:18px 18px 22px}
 .use-body h3{margin-bottom:8px}
 .use-body p{margin:0;color:var(--muted);font-size:.89rem}
@@ -339,6 +344,8 @@ table.price td:last-child{color:var(--muted)}
 .toast.show{opacity:1;transform:translateY(0)}
 
 @media(max-width:1000px){
+  .hero{min-height:560px}
+  .hero-inner{width:min(660px,72%)}
   .navlinks{display:none}
   .estimator,.order-shell,.pickup-grid,.safety-grid,.contact-grid,.location-card{grid-template-columns:1fr}
   .use-grid{grid-template-columns:1fr 1fr}
@@ -348,7 +355,14 @@ table.price td:last-child{color:var(--muted)}
 }
 @media(max-width:640px){
   .section{padding:60px 0}
-  .hero{padding:74px 0 66px}
+  /* Narrow screens: text sits over the photo, so the fade runs top-to-bottom
+     instead of left-to-right. The image keeps its right-hand crop. */
+  .hero{padding:72px 0;min-height:500px;
+    background:
+     linear-gradient(180deg,rgba(2,40,100,.9) 0%,rgba(2,44,108,.76) 55%,rgba(2,46,113,.5) 100%),
+     url('../images/hero-background.jpg') right center/cover no-repeat,
+     #022e71}
+  .hero-inner{width:100%;margin-left:0}
   .use-grid,.guide-grid,.opt-grid{grid-template-columns:1fr}
   .footgrid{grid-template-columns:1fr}
   .info-row{grid-template-columns:1fr}

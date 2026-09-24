@@ -18,7 +18,7 @@
   <div class="wrap">
     <div class="hero-inner">
       <div class="eyebrow">Same-day local pickup</div>
-      <h1>Dry Ice Pellets in<br>Nicholasville &amp; Lexington<br>Order Now — Pick-Up Today.</h1>
+      <h1>Dry Ice Pellets in<br>Nicholasville/Lexington<br>Order Now - Pick-Up Today</h1>
       <p>Dry ice pellets with fast local fulfillment. Available at {{ biz.street }}, {{ biz.city }}. Open
          Monday–Friday from 9 AM to 5 PM. Call {{ biz.phone }} or order online.</p>
       <div class="hero-actions">
@@ -308,8 +308,9 @@
     <div class="use-grid">
       {% for u in use_cases %}
       <article class="use-card">
-           <div class="use-media"
-             style="background-image:linear-gradient(150deg,{{ u.fallback }}){% if u.image_exists %},url('{{ url_for('static', filename='images/' ~ u.image) }}'){% endif %}"></div>
+        <div class="use-media"
+             role="img" aria-label="{{ u.title }}"
+             style="background-image:{% if u.image_exists %}url('{{ url_for('static', filename='images/' ~ u.image) }}'),{% endif %}linear-gradient(150deg,{{ u.fallback }})"></div>
         <div class="use-body">
           <h3>{{ u.title }}</h3>
           <p>{{ u.text }}</p>
